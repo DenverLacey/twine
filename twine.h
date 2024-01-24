@@ -51,6 +51,13 @@ bool twEqual(twString a, twString b);
 /// @return A string slice of the contents of `s` before `the first instance of `c`.
 twString twSplit(twString s, twChar c, twString *remainder);
 
+/// @brief The first character of `s` as a `twString`.
+/// @return The in-place bytes of the first character.
+twString twHeadUTF8(twString s);
+
+/// @return The tail of `s` (All except the first character.)
+twString twTailUTF8(twString s);
+
 /// @brief Drop the first `n` bytes of `s`.
 /// @param n Number of bytes to drop.
 /// @return The number of characters actually dropped in case the length of `s`
@@ -160,6 +167,22 @@ twString twSplit(twString s, twChar c, twString *remainder) {
 
     if (remainder) *remainder = s;
     return result;
+}
+
+twString twHeadUTF8(twString s) {
+    int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
+    if (c_len == 0) {
+        return (twString){0};
+    }
+    return (twString){.bytes = s.bytes, .length = c_len };
+}
+
+twString twTailUTF8(twString s) {
+    int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
+    if (c_len == 0) {
+        return (twString){0};
+    }
+    return (twString){.bytes = s.bytes + c_len, .length = s.length - c_len};
 }
 
 int twDrop(twString *s, size_t n) {
