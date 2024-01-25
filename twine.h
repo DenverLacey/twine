@@ -22,6 +22,7 @@ typedef struct twStringBuf {
     char  *bytes;
     size_t length;
     size_t capacity;
+    size_t max_capacity;
 } twStringBuf;
 
 typedef unsigned int twChar;
@@ -39,6 +40,9 @@ twString twStr(const char *s);
 
 /// @brief Calculates the number of graphemes in `s`.
 size_t twLenUTF8(twString s);
+
+/// @brief Checks that `s` is a valid sequence of UTF8.
+bool twIsValidUTF8(twString s);
 
 /// @brief Comapres two strings.
 /// @return Returns `true` if the strings are equal, and `false` if not.
@@ -68,6 +72,32 @@ int twDrop(twString *s, size_t n);
 // `twStringBuf` functions
 //
 
+/// @brief Creates a `twStringBuf` out of a static buffer.
+/// @param S The buffer to wrap.
+/// @return A `twStringBuf` whose memory is preallocated in a static buffer.
+#define twStaticBuf(S) (twStringBuf){ \
+    .bytes = S, \
+    .length = 0, \
+    .capacity = sizeof(S), \
+    .max_capacity = sizeof(S) \
+}
+
+/// @brief Creates a `twString` from a `twStringBuf`.
+twString twBufToString(twStringBuf buf);
+
+/// @brief Extends the size of the buffer to be `new_size` unless `new_size`
+///        exceeds `max_capacity`.
+/// @return True if buffer was extended successfully. Otherwise, returns false.
+bool twExtendBuf(twStringBuf *buf, size_t new_size);
+
+/// @brief Adds a character to the end of a string buffer.
+/// @return True if character was added succcessfully, otherwise returns false.
+bool twPushUTF8(twStringBuf *buf, twChar c);
+
+/// @brief Appends a string to the end of a string buffer.
+/// @return True if string was added successfully. Otherwise, returns false.
+bool twAppendUTF8(twStringBuf *buf, twString s);
+
 //
 // `twChar` functions
 //
@@ -85,16 +115,6 @@ int twEncodedCodepointLengthUTF8(char byte1);
 /// @return Returns 0 if decoding was unsuccessful. Otherwise, returns length
 ///         of the encoded character.
 int twDecodeUTF8(twString bytes, twChar *result);
-
-/// @brief Encodes a single character into UTF8.
-/// @param c The character to Encode.
-/// @param result [OUT] Encoded character. 
-///               (Length must be large enough to fit the encoded character.)
-///               (Length field is altered.)
-/// @return Returns 0 if decoding was unsuccessful. Otherwise, returns length
-///         of the encoded character.
-int twEncodeUTF8(twChar c, twString *result);
-
 
 //
 // Iteration functions
@@ -116,12 +136,18 @@ int twNextASCII(twString *iter, char *result);
 ///         characters or an error occurred, 0 is returned.
 int twNextUTF8(twString *iter, twChar *result);
 
-/// @brief Can be used to serialize many characters into a buffer.
-/// @param iter The iterator over the buffer where the characters will be serialized.
-///             (There must be enough space to encode `c` remaining.)
-/// @param c The character to serialize.
-/// @return The number of bytes serialized.
-int twSerializeUTF8(twString *iter, twChar c);
+//
+// Printf Niceties
+//
+
+/// @brief Format specifer string for `twString` and `twStringBuf`.
+#define twFmt "%.*s"
+
+/// @brief Correctly passes `S` to a printf-like function.
+/// @param S Either a `twString` or a `twStringBuf`.
+#define twArg(S) (int)(S).length, (S).bytes
+
+#endif // _TWINE_H_
 
 ///////////////////////////////////////////////////////////////////////////////
 //                                                                           //
@@ -129,6 +155,9 @@ int twSerializeUTF8(twString *iter, twChar c);
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
 #ifdef TWINE_IMPLEMENTATION
+
+#ifndef _TWINE_H_IMPLEMENTATION_
+#define _TWINE_H_IMPLEMENTATION_
 
 //
 // `twString` functions
@@ -147,6 +176,17 @@ size_t twLenUTF8(twString s) {
         len++;
     }
     return len;
+}
+
+bool twIsValidUTF8(twString s) {
+    while (s.length > 0) {
+        int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
+        if (c_len == 0) {
+            return false;
+        }
+        twDrop(&s, c_len);
+    }
+    return true;
 }
 
 bool twEqual(twString a, twString b) {
@@ -196,6 +236,80 @@ int twDrop(twString *s, size_t n) {
 //
 // `twStringBuilder` functions
 //
+
+twString twBufToString(twStringBuf buf) {
+    return *(twString*)&buf;
+}
+
+bool twExtendBuf(twStringBuf *buf, size_t new_size) {
+    if (new_size > buf->max_capacity) {
+        return false;
+    }
+
+    buf->bytes = realloc(buf->bytes, new_size);
+    if (!buf->bytes) {
+        return false;
+    }
+
+    buf->capacity = new_size;
+    return true;
+}
+
+bool twPushUTF8(twStringBuf *buf, twChar c) {
+    int c_len = twCodepointLengthUTF8(c);
+    if (c_len == 0) {
+        return false;
+    }
+
+    if (buf->length + c_len > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + c_len)) {
+            return false;
+        }
+    }
+
+    switch (c_len) {
+        case 1:
+            buf->bytes[0] = c & 0x7F;
+            break;
+        case 2:
+            buf->bytes[0] = 0xC0 | ((c >> 6) & 0x1F);
+            buf->bytes[1] = 0x80 | (c & 0x3F);
+            break;
+        case 3:
+            buf->bytes[0] = 0xE0 | ((c >> 12) & 0x0F);
+            buf->bytes[1] = 0x80 | ((c >> 6) & 0x3F);
+            buf->bytes[2] = 0x80 | (c & 0x3F);
+            break;
+        case 4:
+            buf->bytes[0] = 0xF0 | ((c >> 18) & 0x07);
+            buf->bytes[1] = 0x80 | ((c >> 12) & 0x3F);
+            buf->bytes[2] = 0x80 | ((c >> 6) & 0x3F);
+            buf->bytes[3] = 0x80 | (c & 0x3F);
+            break;
+        default:
+            // TODO: What should `result` be set to?
+            break;
+    }
+
+    buf->length += c_len;
+    return true;
+}
+
+bool twAppendUTF8(twStringBuf *buf, twString s) {
+    if (!twIsValidUTF8(s)) {
+        return false;
+    }
+
+    if (buf->length + s.length > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + s.length)) {
+            return false;
+        }
+    }
+
+    strncpy(buf->bytes + buf->length, s.bytes, s.length);
+    buf->length += s.length;
+    return true;
+}
 
 //
 // `twChar` functions
@@ -269,44 +383,8 @@ int twDecodeUTF8(twString bytes, twChar *result) {
     return codepoint_length;
 }
 
-int twEncodeUTF8(twChar c, twString *result) {
-    char *bytes = (char*)result->bytes;
-
-    int codepoint_length = twCodepointLengthUTF8(c);
-    if (result->length < codepoint_length) {
-        return 0;
-    }
-
-    switch (codepoint_length) {
-        case 1:
-            bytes[0] = c & 0x7F;
-            break;
-        case 2:
-            bytes[0] = 0xC0 | ((c >> 6) & 0x1F);
-            bytes[1] = 0x80 | (c & 0x3F);
-            break;
-        case 3:
-            bytes[0] = 0xE0 | ((c >> 12) & 0x0F);
-            bytes[1] = 0x80 | ((c >> 6) & 0x3F);
-            bytes[2] = 0x80 | (c & 0x3F);
-            break;
-        case 4:
-            bytes[0] = 0xF0 | ((c >> 18) & 0x07);
-            bytes[1] = 0x80 | ((c >> 12) & 0x3F);
-            bytes[2] = 0x80 | ((c >> 6) & 0x3F);
-            bytes[3] = 0x80 | (c & 0x3F);
-            break;
-        default:
-            // TODO: What should `result` be set to?
-            break;
-    }
-
-    result->length = codepoint_length;
-    return codepoint_length;
-}
-
 //
-// `twIter` functions
+// Iteration functions
 //
 
 int twNextASCII(twString *iter, char *result) {
@@ -341,16 +419,10 @@ FAIL:
     return 0;
 }
 
-int twSerializeUTF8(twString *iter, twChar c) {
-    twString s = *iter;
-    int codepoint_length = twEncodeUTF8(c, &s);
-    return twDrop(iter, codepoint_length);
-}
+#endif // _TWINE_H_IMPLEMENTATION
 
 #endif // TWINE_IMPLEMENTATION
 
 #undef DO_STRINGIFY
 #undef STRINGIFY
 #undef TODO
-
-#endif // _TWINE_H_
