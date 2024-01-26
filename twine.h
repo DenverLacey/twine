@@ -64,9 +64,20 @@ twString twTailUTF8(twString s);
 
 /// @brief Drop the first `n` bytes of `s`.
 /// @param n Number of bytes to drop.
-/// @return The number of characters actually dropped in case the length of `s`
-///         is less than `n`.
-int twDrop(twString *s, size_t n);
+/// @return New `twString` with first `n` bytes of `s` removed.
+twString twDrop(twString s, size_t n);
+
+/// @brief Removes all leading whitespace characters.
+/// @return A `twString` with leading whitesapce removed. (Points to original data.)
+twString twTrimLeftUTF8(twString s);
+
+/// @brief Removes all trailing whitespace characters.
+/// @return A `twString` with trailing whitesapce removed. (Points to original data.)
+twString twTrimRightUTF8(twString s);
+
+/// @brief Removes all leading and trailing whitespace characters.
+/// @return A `twString` with leading and trailing whitesapce removed. (Points to original data.)
+twString twTrimUTF8(twString s);
 
 //
 // `twStringBuf` functions
@@ -98,6 +109,20 @@ bool twPushUTF8(twStringBuf *buf, twChar c);
 /// @return True if string was added successfully. Otherwise, returns false.
 bool twAppendUTF8(twStringBuf *buf, twString s);
 
+/// @brief Inserts a character into the buffer at a byte index.
+/// @param buf The buffer to insert the character into.
+/// @param idx The byte position to insert the character.
+/// @param c The character.
+/// @return True if the character was inserted successfully. Otherwise, returns false.
+bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c);
+
+/// @brief Inserts a string into the buffer at a byte index.
+/// @param buf The buffer to insert the string into.
+/// @param idx The byte position to insert the string.
+/// @param c The string.
+/// @return True if the string was inserted successfully. Otherwise, returns false.
+bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s);
+
 //
 // `twChar` functions
 //
@@ -108,6 +133,12 @@ int twCodepointLengthUTF8(twChar c);
 /// @brief Number of bytes for an already encoded character.
 /// @param byte1 The first byte of the encoded character.
 int twEncodedCodepointLengthUTF8(char byte1);
+
+/// @brief Is `c` a white space character.
+/// @note Considers ASCII whitespace, and characters in the `Line_Separator`,
+///       `Paragraph_Separator`, and `Space_Separator` character cateogies a
+///        white space character.
+bool twIsSpace(twChar c);
 
 /// @brief Decodes a single UTF-8 character sequence into a codepoint.
 /// @param bytes The UTF-8 encoded character to decode.
@@ -184,7 +215,7 @@ bool twIsValidUTF8(twString s) {
         if (c_len == 0) {
             return false;
         }
-        twDrop(&s, c_len);
+        s = twDrop(s, c_len);
     }
     return true;
 }
@@ -225,13 +256,40 @@ twString twTailUTF8(twString s) {
     return (twString){.bytes = s.bytes + c_len, .length = s.length - c_len};
 }
 
-int twDrop(twString *s, size_t n) {
-    int num_dropped = s->length < n ? s->length : n;
-    s->bytes += num_dropped;
-    s->length -= num_dropped;
-    return num_dropped;
+twString twDrop(twString s, size_t n) {
+    int num_dropped = s.length < n ? s.length : n;
+    return (twString){
+        .bytes = s.bytes + num_dropped,
+        .length = s.length - num_dropped
+    };
 }
 
+twString twTrimLeftUTF8(twString s) {
+    twString iter = s;
+
+    size_t ndrop = 0;
+    twChar c;
+    int c_len;
+    while (c_len = twNextUTF8(&iter, &c)) {
+        if (!twIsSpace(c)) {
+            break;
+        }
+        ndrop += c_len;
+    }
+
+    return twDrop(s, ndrop);
+}
+
+// TODO
+twString twTrimRightUTF8(twString s) {
+    return s;
+}
+
+twString twTrimUTF8(twString s) {
+    s = twTrimLeftUTF8(s);
+    s = twTrimRightUTF8(s);
+    return s;
+}
 
 //
 // `twStringBuilder` functions
@@ -306,8 +364,80 @@ bool twAppendUTF8(twStringBuf *buf, twString s) {
         }
     }
 
-    strncpy(buf->bytes + buf->length, s.bytes, s.length);
+    memcpy(buf->bytes + buf->length, s.bytes, s.length);
     buf->length += s.length;
+    return true;
+}
+
+bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
+    if (idx >= buf->length) {
+        return false;
+    }
+
+    int c_len = twCodepointLengthUTF8(c);
+    if (c_len == 0) {
+        return false;
+    }
+
+    if (buf->length + c_len > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + c_len)) {
+            return false;
+        }
+    }
+
+    for (size_t i = buf->length; i > idx; i--) {
+        buf->bytes[i + c_len - 1] = buf->bytes[i - 1];
+    }
+
+    switch (c_len) {
+        case 1:
+            buf->bytes[idx + 0] = c & 0x7F;
+            break;
+        case 2:
+            buf->bytes[idx + 0] = 0xC0 | ((c >> 6) & 0x1F);
+            buf->bytes[idx + 1] = 0x80 | (c & 0x3F);
+            break;
+        case 3:
+            buf->bytes[idx + 0] = 0xE0 | ((c >> 12) & 0x0F);
+            buf->bytes[idx + 1] = 0x80 | ((c >> 6) & 0x3F);
+            buf->bytes[idx + 2] = 0x80 | (c & 0x3F);
+            break;
+        case 4:
+            buf->bytes[idx + 0] = 0xF0 | ((c >> 18) & 0x07);
+            buf->bytes[idx + 1] = 0x80 | ((c >> 12) & 0x3F);
+            buf->bytes[idx + 2] = 0x80 | ((c >> 6) & 0x3F);
+            buf->bytes[idx + 3] = 0x80 | (c & 0x3F);
+            break;
+    }
+
+    buf->length += c_len;
+
+    return true;
+}
+
+bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s) {
+    if (idx >= buf->length) {
+        return false;
+    }
+
+    if (!twIsValidUTF8(s)) {
+        return false;
+    }
+
+    if (buf->length + s.length > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + s.length)) {
+            return false;
+        }
+    }
+
+    for (size_t i = buf->length; i > idx; i--) {
+        buf->bytes[i + s.length - 1] = buf->bytes[i - 1];
+    }
+
+    memcpy(buf->bytes + idx, s.bytes, s.length);
+
+    buf->length += s.length;
+
     return true;
 }
 
@@ -340,6 +470,41 @@ int twEncodedCodepointLengthUTF8(char byte1) {
         return 4;
     } else {
         return 0;
+    }
+}
+
+bool twIsSpace(twChar c) {
+    switch (c) {
+        // ASCII Whitespace
+        case 0x0009:
+        case 0x000A:
+        case 0x000B:
+        case 0x000C:
+        case 0x000D:
+        // Unicode Category: Line Separator
+        case 0x2028:
+        // Unicode Category: Paragraph Separator
+        case 0x2029:
+        // Unicode Category: Space Separator
+        case 0x0020:
+        case 0x00A0:
+        case 0x1608:
+        case 0x2000:
+        case 0x2001:
+        case 0x2002:
+        case 0x2003:
+        case 0x2004:
+        case 0x2005:
+        case 0x2006:
+        case 0x2007:
+        case 0x2008:
+        case 0x2009:
+        case 0x200A:
+        case 0x202F:
+            return true;
+        
+        default:
+            return false;
     }
 }
 
@@ -410,7 +575,7 @@ int twNextUTF8(twString *iter, twChar *result) {
         goto FAIL;
     }
 
-    twDrop(iter, codepoint_length);
+    *iter = twDrop(*iter, codepoint_length);
 
     return codepoint_length;
 
