@@ -7,10 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DO_STRINGIFY(X) #X
-#define STRINGIFY(X) DO_STRINGIFY(X)
-#define TODO(...) (fprintf(stderr, __FILE__ ":" STRINGIFY(__LINE__) ": TODO: " __VA_ARGS__), exit(-1))
-
 /// @brief Simple pointer-and-length string.
 typedef struct twString {
     const char *bytes;
@@ -61,6 +57,18 @@ twString twHeadUTF8(twString s);
 
 /// @return The tail of `s` (All except the first character.)
 twString twTailUTF8(twString s);
+
+/// @brief The last character in `s`.
+/// @return If `s` isn't empty, the function returns the last character in `s`.
+///         Otherwise, it returns 0. Check length to determine if the last
+///         character was actually 0 or if there is no last character.
+twChar twLastASCII(twString s);
+
+/// @brief The last character in `s`.
+/// @return If `s` isn't empty, the function returns the last character in `s`.
+///         Otherwise, it returns 0. Check length to determine if the last
+///         character was actually 0 or if there is no last character.
+twChar twLastUTF8(twString s);
 
 /// @brief Drop the first `n` bytes of `s`.
 /// @param n Number of bytes to drop.
@@ -113,6 +121,10 @@ bool twAppendUTF8(twStringBuf *buf, twString s);
 /// @return True if string was added sucessfully. Otherwise, returns false.
 bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...);
 
+/// @brief Appends a string to the end of a string buffer and adds a newline.
+/// @return True if string was added successfully. Otherwise, returns false.
+bool twAppendLineUTF8(twStringBuf *buf, twString s);
+
 /// @brief Inserts a character into the buffer at a byte index.
 /// @param buf The buffer to insert the character into.
 /// @param idx The byte position to insert the character.
@@ -126,6 +138,9 @@ bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c);
 /// @param c The string.
 /// @return True if the string was inserted successfully. Otherwise, returns false.
 bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s);
+
+/// @brief Removes every character from a string buffer.
+void twClear(twStringBuf *buf);
 
 //
 // `twChar` functions
@@ -170,6 +185,22 @@ int twNextASCII(twString *iter, char *result);
 /// @return Returns the number of bytes iterated over. If there is no more
 ///         characters or an error occurred, 0 is returned.
 int twNextUTF8(twString *iter, twChar *result);
+
+/// @brief Can be used to get the last ASCII character or to iterate backwards
+///        through many ASCII characters in a string.
+/// @param iter The string is marched backwards along its characters as this function is used.
+/// @param result [OUT, OPT] The next character in the sequence. The last character in `iter`.
+/// @return The number of bytes iterated over. If there is no more character or an error occurred,
+///         0 is returned.
+int twNextRevASCII(twString *iter, char *result);
+
+/// @brief Can be used to get the last UTF-8 character or to iterate backwards through
+///        many UTF-8 characters in a string.
+/// @param iter The string is marched backwards along its charcters as this function is used.
+/// @param result [OUT, OPT] The next character in the sequence. The last character in `iter`.
+/// @return The number of bytes iterated over. If there is no more characters or an error occurred,
+///         0 is returned.
+int twNextRevUTF8(twString *iter, twChar *result);
 
 //
 // Printf Niceties
@@ -264,6 +295,35 @@ twString twTailUTF8(twString s) {
     return (twString){.bytes = s.bytes + c_len, .length = s.length - c_len};
 }
 
+twChar twLastASCII(twString s) {
+    if (s.length == 0) {
+        return 0;
+    }
+
+    return s.bytes[s.length - 1];
+}
+
+twChar twLastUTF8(twString s) {
+    if (s.length == 0) {
+        return 0;
+    }
+
+    for (int i = s.length - 1; i >= 0; i--) {
+        int len = twEncodedCodepointLengthUTF8(s.bytes[i]);
+        if (len != 0) {
+            twChar c;
+            int c_len = twDecodeUTF8((twString){s.bytes + i, len}, &c);
+            if (c_len != len) {
+                return 0;
+            }
+
+            return c;
+        }
+    }
+
+    return 0;
+}
+
 twString twDrop(twString s, size_t n) {
     int num_dropped = s.length < n ? s.length : n;
     return (twString){
@@ -276,9 +336,11 @@ twString twTrimLeftUTF8(twString s) {
     twString iter = s;
 
     size_t ndrop = 0;
-    twChar c;
-    int c_len;
-    while (c_len = twNextUTF8(&iter, &c)) {
+    for (;;) {
+        twChar c;
+        int c_len = twNextUTF8(&iter, &c);
+        if (c_len == 0) break;
+
         if (!twIsSpace(c)) {
             break;
         }
@@ -290,7 +352,25 @@ twString twTrimLeftUTF8(twString s) {
 
 // TODO
 twString twTrimRightUTF8(twString s) {
-    return s;
+    twString iter = s;
+
+    size_t ndrop = 0;
+    for (;;) {
+        twChar c;
+        int c_len = twNextRevUTF8(&iter, &c);
+        if (c_len == 0) break;
+
+        if (!twIsSpace(c)) {
+            break;
+        }
+
+        ndrop += c_len;
+    }
+
+    return (twString){
+        .bytes = s.bytes,
+        .length = s.length - ndrop
+    };
 }
 
 twString twTrimUTF8(twString s) {
@@ -308,8 +388,12 @@ twString twBufToString(twStringBuf buf) {
 }
 
 bool twExtendBuf(twStringBuf *buf, size_t new_size) {
-    if (new_size > buf->max_capacity) {
+    if (buf->max_capacity != 0 && new_size > buf->max_capacity) {
         return false;
+    }
+
+    if (buf->capacity >= new_size) {
+        return true;
     }
 
     buf->bytes = realloc(buf->bytes, new_size);
@@ -390,6 +474,15 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
     return twAppendUTF8(buf, to_add);
 }
 
+bool twAppendLineUTF8(twStringBuf *buf, twString s) {
+    bool ok = twAppendUTF8(buf, s);
+    if (!ok) {
+        return false;
+    }
+
+    return twPushUTF8(buf, '\n');
+}
+
 bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
     if (idx >= buf->length) {
         return false;
@@ -460,6 +553,10 @@ bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s) {
     buf->length += s.length;
 
     return true;
+}
+
+void twClear(twStringBuf *buf) {
+    buf->length = 0;
 }
 
 //
@@ -605,10 +702,30 @@ FAIL:
     return 0;
 }
 
+int twNextRevASCII(twString *iter, char *result) {
+    if (iter->length == 0) {
+        if (result) *result = 0;
+        return 0;
+    }
+
+    if (result) *result = iter->bytes[--iter->length];
+    return 1;
+}
+
+int twNextRevUTF8(twString *iter, twChar *result) {
+    if (iter->length == 0) {
+        if (result) *result = 0;
+        return 0;
+    }
+
+    twChar last = twLastUTF8(*iter);
+    if (result) *result = last;
+
+    int last_len = twCodepointLengthUTF8(last);
+    iter->length -= last_len;
+    return last_len;
+}
+
 #endif // _TWINE_H_IMPLEMENTATION
 
 #endif // TWINE_IMPLEMENTATION
-
-#undef DO_STRINGIFY
-#undef STRINGIFY
-#undef TODO

@@ -20,14 +20,22 @@ int main(void) {
     printf(twFmt"\n", twArg(buf));
 
     twInsertStrUTF8(&buf, 0, twStatic("    "));
-    printf(twFmt"\n", twArg(buf));
+    twAppendUTF8(&buf, twStatic("    "));
+    printf("'"twFmt"'\n", twArg(buf));
 
     twInsertStrUTF8(&buf, 0, twStatic("\t"));
-    printf(twFmt"\n", twArg(buf));
+    printf("'"twFmt"'\n", twArg(buf));
 
     twString s = twBufToString(buf);
-    s = twTrimLeftUTF8(s);
-    printf(twFmt"\n", twArg(s));
+
+    twString left_trimmed = twTrimLeftUTF8(s);
+    printf("'"twFmt"'\n", twArg(left_trimmed));
+
+    twString right_trimmed = twTrimRightUTF8(s);
+    printf("'"twFmt"'\n", twArg(right_trimmed));
+
+    twString trimmed = twTrimUTF8(s);
+    printf("'"twFmt"'\n", twArg(trimmed));
 
     return 0;
 }
