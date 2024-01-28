@@ -109,6 +109,10 @@ bool twPushUTF8(twStringBuf *buf, twChar c);
 /// @return True if string was added successfully. Otherwise, returns false.
 bool twAppendUTF8(twStringBuf *buf, twString s);
 
+/// @brief Appends a formatted string to the end of a string buffer.
+/// @return True if string was added sucessfully. Otherwise, returns false.
+bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...);
+
 /// @brief Inserts a character into the buffer at a byte index.
 /// @param buf The buffer to insert the character into.
 /// @param idx The byte position to insert the character.
@@ -195,7 +199,11 @@ int twNextUTF8(twString *iter, twChar *result);
 //
 
 twString twStr(const char *s) {
-    return (twString){ .bytes = s, .length = strlen(s) };
+    if (s) {
+        return (twString){ .bytes = s, .length = strlen(s) };
+    } else {
+        return (twString){0};
+    }
 }
 
 size_t twLenUTF8(twString s) {
@@ -327,22 +335,22 @@ bool twPushUTF8(twStringBuf *buf, twChar c) {
 
     switch (c_len) {
         case 1:
-            buf->bytes[0] = c & 0x7F;
+            buf->bytes[buf->length + 0] = c & 0x7F;
             break;
         case 2:
-            buf->bytes[0] = 0xC0 | ((c >> 6) & 0x1F);
-            buf->bytes[1] = 0x80 | (c & 0x3F);
+            buf->bytes[buf->length + 0] = 0xC0 | ((c >> 6) & 0x1F);
+            buf->bytes[buf->length + 1] = 0x80 | (c & 0x3F);
             break;
         case 3:
-            buf->bytes[0] = 0xE0 | ((c >> 12) & 0x0F);
-            buf->bytes[1] = 0x80 | ((c >> 6) & 0x3F);
-            buf->bytes[2] = 0x80 | (c & 0x3F);
+            buf->bytes[buf->length + 0] = 0xE0 | ((c >> 12) & 0x0F);
+            buf->bytes[buf->length + 1] = 0x80 | ((c >> 6) & 0x3F);
+            buf->bytes[buf->length + 2] = 0x80 | (c & 0x3F);
             break;
         case 4:
-            buf->bytes[0] = 0xF0 | ((c >> 18) & 0x07);
-            buf->bytes[1] = 0x80 | ((c >> 12) & 0x3F);
-            buf->bytes[2] = 0x80 | ((c >> 6) & 0x3F);
-            buf->bytes[3] = 0x80 | (c & 0x3F);
+            buf->bytes[buf->length + 0] = 0xF0 | ((c >> 18) & 0x07);
+            buf->bytes[buf->length + 1] = 0x80 | ((c >> 12) & 0x3F);
+            buf->bytes[buf->length + 2] = 0x80 | ((c >> 6) & 0x3F);
+            buf->bytes[buf->length + 3] = 0x80 | (c & 0x3F);
             break;
         default:
             // TODO: What should `result` be set to?
@@ -367,6 +375,19 @@ bool twAppendUTF8(twStringBuf *buf, twString s) {
     memcpy(buf->bytes + buf->length, s.bytes, s.length);
     buf->length += s.length;
     return true;
+}
+
+bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    char temp[1024];
+    int len = vsnprintf(temp, sizeof(temp), fmt, args);
+
+    va_end(args);
+
+    twString to_add = {temp, len};
+    return twAppendUTF8(buf, to_add);
 }
 
 bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
