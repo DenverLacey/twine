@@ -7,7 +7,7 @@
 int main(void) {
     twString line = twStatic("10 20 30");
     while (line.length > 0) {
-        twString word = twSplit(line, ' ', &line);
+        twString word = twSplitUTF8(line, ' ', &line);
         printf("%.*s\n", word.length, word.bytes);
     }
     return 0;

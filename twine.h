@@ -35,28 +35,54 @@ twString twStr(const char *s);
 #define twStatic(S) (twString){ .bytes = S, .length = sizeof(S) - 1 }
 
 /// @brief Calculates the number of graphemes in `s`.
+/// @param s A UTF-8 encoded string.
 size_t twLenUTF8(twString s);
 
-/// @brief Checks that `s` is a valid sequence of UTF8.
+/// @brief Calculates the number of graphemes in `s`.
+/// @param s A UTF-16 encoded string.
+size_t twLenUTF16(twString s);
+
+/// @brief Checks that `s` is a valid sequence of UTF-16.
 bool twIsValidUTF8(twString s);
+
+/// @brief Checks that `s` is a valid sequence of UTF-16.
+bool twIsValidUTF16(twString s);
 
 /// @brief Comapres two strings.
 /// @return Returns `true` if the strings are equal, and `false` if not.
 bool twEqual(twString a, twString b);
 
 /// @brief Splits a string by a character. (The split character is not included.)
-/// @param s The string to split.
+/// @param s The UTF-8 encoded string to split.
 /// @param c The charcter to search for.
 /// @param remainder [OUT, OPT] The rest of the string after the split character.
 /// @return A string slice of the contents of `s` before `the first instance of `c`.
-twString twSplit(twString s, twChar c, twString *remainder);
+twString twSplitUTF8(twString s, twChar c, twString *remainder);
+
+/// @brief Splits a string by a character. (The split character is not included.)
+/// @param s The UTF-16 encoded string to split.
+/// @param c The charcter to search for.
+/// @param remainder [OUT, OPT] The rest of the string after the split character.
+/// @return A string slice of the contents of `s` before `the first instance of `c`.
+twString twSplitUTF16(twString s, twChar c, twString *remainder);
 
 /// @brief The first character of `s` as a `twString`.
+/// @param s A UTF-8 encoded string.
 /// @return The in-place bytes of the first character.
 twString twHeadUTF8(twString s);
 
+/// @brief The first character of `s` as a `twString`.
+/// @param s A UTF-16 encoded string.
+/// @return The in-place bytes of the first character.
+twString twHeadUTF16(twString s);
+
+/// @param s A UTF-8 encoded string.
 /// @return The tail of `s` (All except the first character.)
 twString twTailUTF8(twString s);
+
+/// @param s A UTF-16 encoded string.
+/// @return The tail of `s` (All except the first character.)
+twString twTailUTF16(twString s);
 
 /// @brief The last character in `s`.
 /// @return If `s` isn't empty, the function returns the last character in `s`.
@@ -70,22 +96,46 @@ twChar twLastASCII(twString s);
 ///         character was actually 0 or if there is no last character.
 twChar twLastUTF8(twString s);
 
+/// @brief The last UTF-16 character in `s`.
+/// @return If `s` isn't empty, the function returns the last character in `s`.
+///         Otherwise, it returns 0. Check length to determine if the last
+///         character was actually 0 or if there is no last character.
+twChar twLastUTF16(twString s);
+
 /// @brief Drop the first `n` bytes of `s`.
 /// @param n Number of bytes to drop.
 /// @return New `twString` with first `n` bytes of `s` removed.
 twString twDrop(twString s, size_t n);
 
 /// @brief Removes all leading whitespace characters.
+/// @param s A UTF-8 encoded string.
 /// @return A `twString` with leading whitesapce removed. (Points to original data.)
 twString twTrimLeftUTF8(twString s);
 
+/// @brief Removes all leading whitespace characters.
+/// @param s A UTF-16 encoded string.
+/// @return A `twString` with leading whitesapce removed. (Points to original data.)
+twString twTrimLeftUTF16(twString s);
+
 /// @brief Removes all trailing whitespace characters.
+/// @param s A UTF-8 encoded string.
 /// @return A `twString` with trailing whitesapce removed. (Points to original data.)
 twString twTrimRightUTF8(twString s);
 
+/// @brief Removes all trailing whitespace characters.
+/// @param s A UTF-16 encoded string.
+/// @return A `twString` with trailing whitesapce removed. (Points to original data.)
+twString twTrimRightUTF16(twString s);
+
 /// @brief Removes all leading and trailing whitespace characters.
+/// @param s A UTF-8 encoded string.
 /// @return A `twString` with leading and trailing whitesapce removed. (Points to original data.)
 twString twTrimUTF8(twString s);
+
+/// @brief Removes all leading and trailing whitespace characters.
+/// @param s A UTF-16 encoded string.
+/// @return A `twString` with leading and trailing whitesapce removed. (Points to original data.)
+twString twTrimUTF16(twString s);
 
 //
 // `twStringBuf` functions
@@ -110,34 +160,76 @@ twString twBufToString(twStringBuf buf);
 bool twExtendBuf(twStringBuf *buf, size_t new_size);
 
 /// @brief Adds a character to the end of a string buffer.
+/// @param s A UTF-8 encdoded string buffer.
 /// @return True if character was added succcessfully, otherwise returns false.
 bool twPushUTF8(twStringBuf *buf, twChar c);
 
+/// @brief Adds a character to the end of a string buffer.
+/// @param buf A UTF-16 encdoded string buffer.
+/// @return True if character was added succcessfully, otherwise returns false.
+bool twPushUTF16(twStringBuf *buf, twChar c);
+
 /// @brief Appends a string to the end of a string buffer.
+/// @param buf A UTF-8 encoded string buffer.
+/// @param s A UTF-8 encoded string.
 /// @return True if string was added successfully. Otherwise, returns false.
 bool twAppendUTF8(twStringBuf *buf, twString s);
 
+/// @brief Appends a string to the end of a string buffer.
+/// @param buf A UTF-16 encoded string buffer.
+/// @param s A UTF-16 encoded string.
+/// @return True if string was added successfully. Otherwise, returns false.
+bool twAppendUTF16(twStringBuf *buf, twString s);
+
 /// @brief Appends a formatted string to the end of a string buffer.
+/// @param buf A UTF-8 encoded string buffer.
 /// @return True if string was added sucessfully. Otherwise, returns false.
 bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...);
 
+/// @brief Appends a formatted string to the end of a string buffer.
+/// @param buf A UTF-16 encoded string buffer.
+/// @return True if string was added sucessfully. Otherwise, returns false.
+bool twAppendFmtUTF16(twStringBuf *buf, const char * restrict fmt, ...);
+
 /// @brief Appends a string to the end of a string buffer and adds a newline.
+/// @param buf A UTF-8 encoded string buffer.
+/// @param s A UTF-8 encoded string.
 /// @return True if string was added successfully. Otherwise, returns false.
 bool twAppendLineUTF8(twStringBuf *buf, twString s);
 
+/// @brief Appends a string to the end of a string buffer and adds a newline.
+/// @param buf A UTF-16 encoded string buffer.
+/// @param s A UTF-16 encoded string.
+/// @return True if string was added successfully. Otherwise, returns false.
+bool twAppendLineUTF16(twStringBuf *buf, twString s);
+
 /// @brief Inserts a character into the buffer at a byte index.
-/// @param buf The buffer to insert the character into.
+/// @param buf The UTF-8 encoded buffer to insert the character into.
 /// @param idx The byte position to insert the character.
 /// @param c The character.
 /// @return True if the character was inserted successfully. Otherwise, returns false.
 bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c);
 
+/// @brief Inserts a character into the buffer at a byte index.
+/// @param buf The UTF-16 encoded buffer to insert the character into.
+/// @param idx The byte position to insert the character.
+/// @param c The character.
+/// @return True if the character was inserted successfully. Otherwise, returns false.
+bool twInsertUTF16(twStringBuf *buf, size_t idx, twChar c);
+
 /// @brief Inserts a string into the buffer at a byte index.
-/// @param buf The buffer to insert the string into.
+/// @param buf The UTF-8 encoded buffer to insert the string into.
 /// @param idx The byte position to insert the string.
-/// @param c The string.
+/// @param s The UTF-8 encoded string.
 /// @return True if the string was inserted successfully. Otherwise, returns false.
 bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s);
+
+/// @brief Inserts a string into the buffer at a byte index.
+/// @param buf The UTF-16 encoded buffer to insert the string into.
+/// @param idx The byte position to insert the string.
+/// @param s The UTF-16 encoded string.
+/// @return True if the string was inserted successfully. Otherwise, returns false.
+bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s);
 
 /// @brief Removes every character from a string buffer.
 void twClear(twStringBuf *buf);
@@ -149,9 +241,16 @@ void twClear(twStringBuf *buf);
 /// @brief How many bytes required to encode a codepoint in UTF-8.
 int twCodepointLengthUTF8(twChar c);
 
+/// @brief How many bytes required to encode a codepoint in UTF-16.
+int twCodepointLengthUTF16(twChar c);
+
 /// @brief Number of bytes for an already encoded character.
-/// @param byte1 The first byte of the encoded character.
+/// @param byte1 The first byte of the UTF-8 encoded character.
 int twEncodedCodepointLengthUTF8(char byte1);
+
+/// @brief Number of bytes for an already encoded UTF-16 character.
+/// @param byte1 The first byte of the UTF-16 encoded character.
+int twEncodedCodepointLengthUTF16(char byte1);
 
 /// @brief Is `c` a white space character.
 /// @note Considers ASCII whitespace, and characters in the `Line_Separator`,
@@ -165,6 +264,13 @@ bool twIsSpace(twChar c);
 /// @return Returns 0 if decoding was unsuccessful. Otherwise, returns length
 ///         of the encoded character.
 int twDecodeUTF8(twString bytes, twChar *result);
+
+/// @brief Decodes a single UTF-16 character sequence into a codepoint.
+/// @param bytes The UTF-16 encoded character to decode.
+/// @param result [OUT] The decoded character.
+/// @return Returns 0 if decoding was unsuccessful. Otherwise, returns length
+///         of the encoded character.
+int twDecodeUTF16(twString bytes, twChar *result);
 
 //
 // Iteration functions
@@ -186,6 +292,14 @@ int twNextASCII(twString *iter, char *result);
 ///         characters or an error occurred, 0 is returned.
 int twNextUTF8(twString *iter, twChar *result);
 
+/// @brief Can be used to get the next UTF-16 character or to iterate through
+///        many UTF-16 characters in a string.
+/// @param iter The string is marched along its charcters as this function is used.
+/// @param result [OUT, OPT] The next character in the string `iter`.
+/// @return Returns the number of bytes iterated over. If there is no more
+///         characters or an error occurred, 0 is returned.
+int twNextUTF16(twString *iter, twChar *result);
+
 /// @brief Can be used to get the last ASCII character or to iterate backwards
 ///        through many ASCII characters in a string.
 /// @param iter The string is marched backwards along its characters as this function is used.
@@ -201,6 +315,14 @@ int twNextRevASCII(twString *iter, char *result);
 /// @return The number of bytes iterated over. If there is no more characters or an error occurred,
 ///         0 is returned.
 int twNextRevUTF8(twString *iter, twChar *result);
+
+/// @brief Can be used to get the last UTF-16 character or to iterate backwards through
+///        many UTF-16 characters in a string.
+/// @param iter The string is marched backwards along its charcters as this function is used.
+/// @param result [OUT, OPT] The next character in the sequence. The last character in `iter`.
+/// @return The number of bytes iterated over. If there is no more characters or an error occurred,
+///         0 is returned.
+int twNextRevUTF16(twString *iter, twChar *result);
 
 //
 // Printf Niceties
@@ -248,9 +370,31 @@ size_t twLenUTF8(twString s) {
     return len;
 }
 
+size_t twLenUTF16(twString s) {
+    // TODO: If we're doing graphemes then we need to handle things like
+    //       character modifiers.
+
+    size_t len = 0;
+    while (twNextUTF16(&s, NULL)) {
+        len++;
+    }
+    return len;
+}
+
 bool twIsValidUTF8(twString s) {
     while (s.length > 0) {
         int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
+        if (c_len == 0) {
+            return false;
+        }
+        s = twDrop(s, c_len);
+    }
+    return true;
+}
+
+bool twIsValidUTF16(twString s) {
+    while (s.length > 0) {
+        int c_len = twEncodedCodepointLengthUTF16(s.bytes[0]);
         if (c_len == 0) {
             return false;
         }
@@ -263,7 +407,7 @@ bool twEqual(twString a, twString b) {
     return a.length == b.length && (memcmp(a.bytes, b.bytes, a.length) == 0);
 }
 
-twString twSplit(twString s, twChar c, twString *remainder) {
+twString twSplitUTF8(twString s, twChar c, twString *remainder) {
     twString result = { .bytes = s.bytes, .length = 0 };
 
     twChar cur;
@@ -279,12 +423,36 @@ twString twSplit(twString s, twChar c, twString *remainder) {
     return result;
 }
 
+twString twSplitUTF16(twString s, twChar c, twString *remainder) {
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    twChar cur;
+    int curlen;
+    while ((curlen = twNextUTF16(&s, &cur)) > 0 && cur != c) {
+        result.length += curlen;
+        if (s.length <= 0) {
+            break;
+        }
+    }
+
+    if (remainder) *remainder = s;
+    return result;
+}
+
 twString twHeadUTF8(twString s) {
     int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
     if (c_len == 0) {
         return (twString){0};
     }
-    return (twString){.bytes = s.bytes, .length = c_len };
+    return (twString){ .bytes = s.bytes, .length = c_len };
+}
+
+twString twHeadUTF16(twString s) {
+    int c_len = twEncodedCodepointLengthUTF16(s.bytes[0]);
+    if (c_len == 0) {
+        return (twString){0};
+    }
+    return (twString){ .bytes = s.bytes, .length = c_len };
 }
 
 twString twTailUTF8(twString s) {
@@ -292,7 +460,15 @@ twString twTailUTF8(twString s) {
     if (c_len == 0) {
         return (twString){0};
     }
-    return (twString){.bytes = s.bytes + c_len, .length = s.length - c_len};
+    return twDrop(s, c_len);
+}
+
+twString twTailUTF16(twString s) {
+    int c_len = twEncodedCodepointLengthUTF16(s.bytes[0]);
+    if (c_len == 0) {
+        return (twString){0};
+    }
+    return twDrop(s, c_len);
 }
 
 twChar twLastASCII(twString s) {
@@ -313,6 +489,27 @@ twChar twLastUTF8(twString s) {
         if (len != 0) {
             twChar c;
             int c_len = twDecodeUTF8((twString){s.bytes + i, len}, &c);
+            if (c_len != len) {
+                return 0;
+            }
+
+            return c;
+        }
+    }
+
+    return 0;
+}
+
+twChar twLastUTF16(twString s) {
+    if (s.length == 0) {
+        return 0;
+    }
+
+    for (int i = s.length - 1; i >= 0; i--) {
+        int len = twEncodedCodepointLengthUTF16(s.bytes[i]);
+        if (len != 0) {
+            twChar c;
+            int c_len = twDecodeUTF16((twString){s.bytes + i, len}, &c);
             if (c_len != len) {
                 return 0;
             }
@@ -350,7 +547,24 @@ twString twTrimLeftUTF8(twString s) {
     return twDrop(s, ndrop);
 }
 
-// TODO
+twString twTrimLeftUTF16(twString s) {
+    twString iter = s;
+
+    size_t ndrop = 0;
+    for (;;) {
+        twChar c;
+        int c_len = twNextUTF16(&iter, &c);
+        if (c_len == 0) break;
+
+        if (!twIsSpace(c)) {
+            break;
+        }
+        ndrop += c_len;
+    }
+
+    return twDrop(s, ndrop);
+}
+
 twString twTrimRightUTF8(twString s) {
     twString iter = s;
 
@@ -373,9 +587,37 @@ twString twTrimRightUTF8(twString s) {
     };
 }
 
+twString twTrimRightUTF16(twString s) {
+    twString iter = s;
+
+    size_t ndrop = 0;
+    for (;;) {
+        twChar c;
+        int c_len = twNextRevUTF16(&iter, &c);
+        if (c_len == 0) break;
+
+        if (!twIsSpace(c)) {
+            break;
+        }
+
+        ndrop += c_len;
+    }
+
+    return (twString){
+        .bytes = s.bytes,
+        .length = s.length - ndrop
+    };   
+}
+
 twString twTrimUTF8(twString s) {
     s = twTrimLeftUTF8(s);
     s = twTrimRightUTF8(s);
+    return s;
+}
+
+twString twTrimUTF16(twString s) {
+    s = twTrimLeftUTF16(s);
+    s = twTrimRightUTF16(s);
     return s;
 }
 
@@ -445,8 +687,28 @@ bool twPushUTF8(twStringBuf *buf, twChar c) {
     return true;
 }
 
+bool twPushUTF16(twStringBuf *buf, twChar c) {
+    return false;
+}
+
 bool twAppendUTF8(twStringBuf *buf, twString s) {
     if (!twIsValidUTF8(s)) {
+        return false;
+    }
+
+    if (buf->length + s.length > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + s.length)) {
+            return false;
+        }
+    }
+
+    memcpy(buf->bytes + buf->length, s.bytes, s.length);
+    buf->length += s.length;
+    return true;
+}
+
+bool twAppendUTF16(twStringBuf *buf, twString s) {
+    if (!twIsValidUTF16(s)) {
         return false;
     }
 
@@ -474,6 +736,20 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
     return twAppendUTF8(buf, to_add);
 }
 
+bool twAppendFmtUTF16(twStringBuf *buf, const char * restrict fmt, ...) {
+    // va_list args;
+    // va_start(args, fmt);
+
+    // char temp[1024];
+    // int len = vsnprintf(temp, sizeof(temp), fmt, args);
+
+    // va_end(args);
+
+    // twString to_add = {temp, len};
+    // return twAppendUTF8(buf, to_add);
+    return false;
+}
+
 bool twAppendLineUTF8(twStringBuf *buf, twString s) {
     bool ok = twAppendUTF8(buf, s);
     if (!ok) {
@@ -481,6 +757,15 @@ bool twAppendLineUTF8(twStringBuf *buf, twString s) {
     }
 
     return twPushUTF8(buf, '\n');
+}
+
+bool twAppendLineUTF16(twStringBuf *buf, twString s) {
+    bool ok = twAppendUTF16(buf, s);
+    if (!ok) {
+        return false;
+    }
+
+    return twPushUTF16(buf, '\n');
 }
 
 bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
@@ -529,6 +814,10 @@ bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
     return true;
 }
 
+bool twInsertUTF16(twStringBuf *buf, size_t idx, twChar c) {
+    return false;
+}
+
 bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s) {
     if (idx >= buf->length) {
         return false;
@@ -555,6 +844,32 @@ bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s) {
     return true;
 }
 
+bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s) {
+    if (idx >= buf->length) {
+        return false;
+    }
+
+    if (!twIsValidUTF16(s)) {
+        return false;
+    }
+
+    if (buf->length + s.length > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + s.length)) {
+            return false;
+        }
+    }
+
+    for (size_t i = buf->length; i > idx; i--) {
+        buf->bytes[i + s.length - 1] = buf->bytes[i - 1];
+    }
+
+    memcpy(buf->bytes + idx, s.bytes, s.length);
+
+    buf->length += s.length;
+
+    return true;   
+}
+
 void twClear(twStringBuf *buf) {
     buf->length = 0;
 }
@@ -577,6 +892,16 @@ int twCodepointLengthUTF8(twChar c) {
     }
 }
 
+int twCodepointLengthUTF16(twChar c) {
+    if (c < 0x10000) {
+        return 2;
+    } else if (c <= 0x10FFFF) {
+        return 4;
+    } else {
+        return 0;
+    }
+}
+
 int twEncodedCodepointLengthUTF8(char byte1) {
     if ((byte1 & 0x80) == 0) {
         return 1;
@@ -585,6 +910,16 @@ int twEncodedCodepointLengthUTF8(char byte1) {
     } else if ((byte1 & 0xF0) == 0xE0) {
         return 3;
     } else if ((byte1 & 0xF8) == 0xF0) {
+        return 4;
+    } else {
+        return 0;
+    }
+}
+
+int twEncodedCodepointLengthUTF16(char byte1) {
+    if ((byte1 & 0x80) == 0) {
+        return 2;
+    } else if ((byte1 & 0xE0) == 0xC0) {
         return 4;
     } else {
         return 0;
@@ -666,6 +1001,29 @@ int twDecodeUTF8(twString bytes, twChar *result) {
     return codepoint_length;
 }
 
+int twDecodeUTF16(twString bytes, twChar *result) {
+    int codepoint_length = twEncodedCodepointLengthUTF16(bytes.bytes[0]);
+
+    switch (codepoint_length) {
+        case 2: {
+            *result = (bytes.bytes[0] << 8) | (bytes.bytes[1]);
+            break;
+        }
+        case 4: {
+            uint32_t fw = (bytes.bytes[0] << 8) | (bytes.bytes[1]);
+            uint32_t sw = (bytes.bytes[2] << 8) | (bytes.bytes[3]);
+            *result = ((fw - 0xD800) << 10) + (sw - 0xDC00) + 0x10000;
+            break;
+        }
+        default: {
+            *result = 0;
+            break;
+        }
+    }
+
+    return codepoint_length;
+}
+
 //
 // Iteration functions
 //
@@ -702,6 +1060,26 @@ FAIL:
     return 0;
 }
 
+int twNextUTF16(twString *iter, twChar *result) {
+    if (iter->length == 0) {
+        goto FAIL;
+    }
+
+    int codepoint_length = result ? twDecodeUTF16(*iter, result)
+                                  : twEncodedCodepointLengthUTF16(iter->bytes[0]);
+    if (codepoint_length == 0) {
+        goto FAIL;
+    }
+
+    *iter = twDrop(*iter, codepoint_length);
+
+    return codepoint_length;
+
+FAIL:
+    if (result) *result = 0;
+    return 0;
+}
+
 int twNextRevASCII(twString *iter, char *result) {
     if (iter->length == 0) {
         if (result) *result = 0;
@@ -722,6 +1100,20 @@ int twNextRevUTF8(twString *iter, twChar *result) {
     if (result) *result = last;
 
     int last_len = twCodepointLengthUTF8(last);
+    iter->length -= last_len;
+    return last_len;
+}
+
+int twNextRevUTF16(twString *iter, twChar *result) {
+    if (iter->length == 0) {
+        if (result) *result = 0;
+        return 0;
+    }
+
+    twChar last = twLastUTF16(*iter);
+    if (result) *result = last;
+
+    int last_len = twCodepointLengthUTF16(last);
     iter->length -= last_len;
     return last_len;
 }
