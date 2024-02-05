@@ -1166,7 +1166,8 @@ int twNextRevASCII(twString *iter, char *result) {
         return 0;
     }
 
-    if (result) *result = iter->bytes[--iter->length];
+    iter->length--;
+    if (result) *result = iter->bytes[iter->length];
     return 1;
 }
 

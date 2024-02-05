@@ -7,7 +7,7 @@ standard library makes modern string manipulation code tedious and error-prone.
 Twine aims to provide a more modern string handling library that also supports
 Unicode, both UTF-8 and UTF-16.
 
-## Example
+## Examples
 
 Here's a short example that splits a string by SPACE and prints each word on a
 newline.
@@ -26,7 +26,7 @@ void print_words(twString s) {
 }
 ```
 
-Here's an example that counts the number of whitespace characters are in a string.
+Here's an example that counts the number of whitespace characters in a string.
 
 ```c
 #define TWINE_IMPLEMENTATION
