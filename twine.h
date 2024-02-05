@@ -1,9 +1,11 @@
 #ifndef _TWINE_H_
 #define _TWINE_H_
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,7 +15,7 @@ typedef struct twString {
     size_t      length;
 } twString;
 
-/// @brief An owning string capable of dynamic string construction.
+/// @brief A growable and mutable string buffer capable of dynamic string construction.
 typedef struct twStringBuf {
     char  *bytes;
     size_t length;
@@ -21,7 +23,26 @@ typedef struct twStringBuf {
     size_t max_capacity;
 } twStringBuf;
 
-typedef unsigned int twChar;
+/// @brief a 32-bit integer used to represent characters as Unicode codepoints.
+typedef uint32_t twChar;
+
+//
+// C-String functions
+//
+
+/// @brief Encodes a unicode codepoint as UTF-8 into a given buffer.
+/// @param bytes [OUT] Destination bytes of the encoded character.
+/// @param nbytes Number of bytes available for encoding.
+/// @param c The character to encode.
+/// @return The codepoint length of `c`.
+int twEncodeUTF8(char *bytes, int nbytes, twChar c);
+
+/// @brief Encodes a unicode codepoint as UTF-16 into a given buffer.
+/// @param bytes [OUT] Destination bytes of the encoded character.
+/// @param nbytes Number of bytes available for encoding.
+/// @param c The character to encode.
+/// @return The codepoint length of `c`.
+int twEncodeUTF16(char *bytes, int nbytes, twChar c);
 
 //
 // `twString` functions
@@ -56,14 +77,14 @@ bool twEqual(twString a, twString b);
 /// @param s The UTF-8 encoded string to split.
 /// @param c The charcter to search for.
 /// @param remainder [OUT, OPT] The rest of the string after the split character.
-/// @return A string slice of the contents of `s` before `the first instance of `c`.
+/// @return A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitUTF8(twString s, twChar c, twString *remainder);
 
 /// @brief Splits a string by a character. (The split character is not included.)
 /// @param s The UTF-16 encoded string to split.
 /// @param c The charcter to search for.
 /// @param remainder [OUT, OPT] The rest of the string after the split character.
-/// @return A string slice of the contents of `s` before `the first instance of `c`.
+/// @return A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitUTF16(twString s, twChar c, twString *remainder);
 
 /// @brief The first character of `s` as a `twString`.
@@ -346,6 +367,61 @@ int twNextRevUTF16(twString *iter, twChar *result);
 
 #ifndef _TWINE_H_IMPLEMENTATION_
 #define _TWINE_H_IMPLEMENTATION_
+
+//
+// C-String functions
+//
+
+int twEncodeUTF8(char *bytes, int nbytes, twChar c) {
+    int c_len = twCodepointLengthUTF8(c);
+    assert(c_len != 0 && c_len <= nbytes);
+
+    switch (c_len) {
+        case 1:
+            bytes[0] = c & 0x7F;
+            break;
+        case 2:
+            bytes[0] = 0xC0 | ((c >> 6) & 0x1F);
+            bytes[1] = 0x80 | (c & 0x3F);
+            break;
+        case 3:
+            bytes[0] = 0xE0 | ((c >> 12) & 0x0F);
+            bytes[1] = 0x80 | ((c >> 6) & 0x3F);
+            bytes[2] = 0x80 | (c & 0x3F);
+            break;
+        case 4:
+            bytes[0] = 0xF0 | ((c >> 18) & 0x07);
+            bytes[1] = 0x80 | ((c >> 12) & 0x3F);
+            bytes[2] = 0x80 | ((c >> 6) & 0x3F);
+            bytes[3] = 0x80 | (c & 0x3F);
+            break;
+    }
+
+    return c_len;
+}
+
+int twEncodeUTF16(char *bytes, int nbytes, twChar c) {
+    int codepoint_length = twEncodedCodepointLengthUTF16(bytes[0]);
+    if (codepoint_length == 0) {
+        return 0;
+    }
+
+    switch (codepoint_length) {
+        case 2:
+            bytes[0] = (c >> 8) & 0xFF;
+            bytes[1] = c & 0xFF;
+            break;
+        case 4:
+            c -= 0x10000;
+            bytes[0] = 0xDB | ((c >> 18) & 0x03);
+            bytes[1] = (c >> 10) & 0xFF;
+            bytes[2] = 0xDC | ((c >> 8) & 0x03);
+            bytes[3] = c & 0xFF;
+            break;
+    }
+
+    return codepoint_length;
+}
 
 //
 // `twString` functions
@@ -659,28 +735,9 @@ bool twPushUTF8(twStringBuf *buf, twChar c) {
         }
     }
 
-    switch (c_len) {
-        case 1:
-            buf->bytes[buf->length + 0] = c & 0x7F;
-            break;
-        case 2:
-            buf->bytes[buf->length + 0] = 0xC0 | ((c >> 6) & 0x1F);
-            buf->bytes[buf->length + 1] = 0x80 | (c & 0x3F);
-            break;
-        case 3:
-            buf->bytes[buf->length + 0] = 0xE0 | ((c >> 12) & 0x0F);
-            buf->bytes[buf->length + 1] = 0x80 | ((c >> 6) & 0x3F);
-            buf->bytes[buf->length + 2] = 0x80 | (c & 0x3F);
-            break;
-        case 4:
-            buf->bytes[buf->length + 0] = 0xF0 | ((c >> 18) & 0x07);
-            buf->bytes[buf->length + 1] = 0x80 | ((c >> 12) & 0x3F);
-            buf->bytes[buf->length + 2] = 0x80 | ((c >> 6) & 0x3F);
-            buf->bytes[buf->length + 3] = 0x80 | (c & 0x3F);
-            break;
-        default:
-            // TODO: What should `result` be set to?
-            break;
+    int encode_result = twEncodeUTF8(buf->bytes + buf->length, buf->capacity - buf->length, c);
+    if (encode_result == 0 || encode_result != c_len) {
+        return false;
     }
 
     buf->length += c_len;
@@ -688,7 +745,24 @@ bool twPushUTF8(twStringBuf *buf, twChar c) {
 }
 
 bool twPushUTF16(twStringBuf *buf, twChar c) {
-    return false;
+    int c_len = twCodepointLengthUTF16(c);
+    if (c_len == 0) {
+        return false;
+    }
+
+    if (buf->length + c_len > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + c_len)) {
+            return false;
+        }
+    }
+
+    int encode_result = twEncodeUTF16(buf->bytes + buf->length, buf->capacity - buf->length, c);
+    if (encode_result == 0 || encode_result != c_len) {
+        return false;
+    }
+
+    buf->length += c_len;
+    return true;
 }
 
 bool twAppendUTF8(twStringBuf *buf, twString s) {
@@ -788,25 +862,9 @@ bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
         buf->bytes[i + c_len - 1] = buf->bytes[i - 1];
     }
 
-    switch (c_len) {
-        case 1:
-            buf->bytes[idx + 0] = c & 0x7F;
-            break;
-        case 2:
-            buf->bytes[idx + 0] = 0xC0 | ((c >> 6) & 0x1F);
-            buf->bytes[idx + 1] = 0x80 | (c & 0x3F);
-            break;
-        case 3:
-            buf->bytes[idx + 0] = 0xE0 | ((c >> 12) & 0x0F);
-            buf->bytes[idx + 1] = 0x80 | ((c >> 6) & 0x3F);
-            buf->bytes[idx + 2] = 0x80 | (c & 0x3F);
-            break;
-        case 4:
-            buf->bytes[idx + 0] = 0xF0 | ((c >> 18) & 0x07);
-            buf->bytes[idx + 1] = 0x80 | ((c >> 12) & 0x3F);
-            buf->bytes[idx + 2] = 0x80 | ((c >> 6) & 0x3F);
-            buf->bytes[idx + 3] = 0x80 | (c & 0x3F);
-            break;
+    int encode_result = twEncodeUTF8(buf->bytes + idx, buf->capacity - idx, c);
+    if (encode_result == 0 || encode_result != c_len) {
+        return false;
     }
 
     buf->length += c_len;
@@ -815,7 +873,33 @@ bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
 }
 
 bool twInsertUTF16(twStringBuf *buf, size_t idx, twChar c) {
-    return false;
+    if (idx >= buf->length) {
+        return false;
+    }
+
+    int c_len = twCodepointLengthUTF16(c);
+    if (c_len == 0) {
+        return false;
+    }
+
+    if (buf->length + c_len > buf->capacity) {
+        if (!twExtendBuf(buf, buf->length + c_len)) {
+            return false;
+        }
+    }
+
+    for (size_t i = buf->length; i > idx; i--) {
+        buf->bytes[i + c_len - 1] = buf->bytes[i - 1];
+    }
+
+    int encode_result = twEncodeUTF16(buf->bytes + idx, buf->capacity - idx, c);
+    if (encode_result == 0 || encode_result != c_len) {
+        return false;
+    }
+
+    buf->length += c_len;
+
+    return true;   return false;
 }
 
 bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s) {
@@ -965,37 +1049,33 @@ int twDecodeUTF8(twString bytes, twChar *result) {
     int codepoint_length = twEncodedCodepointLengthUTF8(bytes.bytes[0]);
 
     switch (codepoint_length) {
-    case 1:
-        *result = bytes.bytes[0];
-        break;
-        
-    case 2: {
-        twChar byte1 = bytes.bytes[0];
-        twChar byte2 = bytes.bytes[1];
-        *result = (byte1 & 0x1F) << 6 | (byte2 & 0x3F);
-        break;
-    }
-
-    case 3: {
-        twChar byte1 = bytes.bytes[0];
-        twChar byte2 = bytes.bytes[1];
-        twChar byte3 = bytes.bytes[2];
-        *result = (byte1 & 0x0F) << 12 | (byte2 & 0x3F) << 6 | (byte3 & 0x3F);
-        break;
-    }
-
-    case 4: {
-        twChar byte1 = bytes.bytes[0];
-        twChar byte2 = bytes.bytes[1];
-        twChar byte3 = bytes.bytes[2];
-        twChar byte4 = bytes.bytes[3];
-        *result = (byte1 & 0x07) << 18 | (byte2 & 0x3F) << 12 | (byte3 & 0x3F) << 6 | (byte4 & 0x3F);
-        break;
-    }
-    
-    default:
-        *result = 0;
-        return 0;
+        case 1:
+            *result = bytes.bytes[0];
+            break;
+        case 2: {
+            twChar byte1 = bytes.bytes[0];
+            twChar byte2 = bytes.bytes[1];
+            *result = (byte1 & 0x1F) << 6 | (byte2 & 0x3F);
+            break;
+        }
+        case 3: {
+            twChar byte1 = bytes.bytes[0];
+            twChar byte2 = bytes.bytes[1];
+            twChar byte3 = bytes.bytes[2];
+            *result = (byte1 & 0x0F) << 12 | (byte2 & 0x3F) << 6 | (byte3 & 0x3F);
+            break;
+        }
+        case 4: {
+            twChar byte1 = bytes.bytes[0];
+            twChar byte2 = bytes.bytes[1];
+            twChar byte3 = bytes.bytes[2];
+            twChar byte4 = bytes.bytes[3];
+            *result = (byte1 & 0x07) << 18 | (byte2 & 0x3F) << 12 | (byte3 & 0x3F) << 6 | (byte4 & 0x3F);
+            break;
+        }
+        default:
+            *result = 0;
+            return 0;
     }
 
     return codepoint_length;
