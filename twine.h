@@ -44,6 +44,24 @@ int twEncodeUTF8(char *bytes, int nbytes, twChar c);
 /// @return The codepoint length of `c`.
 int twEncodeUTF16(char *bytes, int nbytes, twChar c);
 
+/// @brief Decodes the first `n` characters in `s`.
+/// @param s The UTF-8 encoded string to decode.
+/// @param cs [OUT] The destination for the decoded characters.
+//// @param n How many characters to decode. (`cs` assumed to have enough space)
+/// @return How many characters were decoded. This can be fewer than `n` if
+///         something goes wrong while decoding or `s` doesn't have that many
+///         characters.
+size_t twDecodeUTF8(const char *s, twChar *cs, size_t n);
+
+/// @brief Decodes the first `n` characters in `s`.
+/// @param s The UTF-16 encoded string to decode.
+/// @param cs [OUT] The destination for the decoded characters.
+//// @param n How many characters to decode. (`cs` assumed to have enough space)
+/// @return How many characters were decoded. This can be fewer than `n` if
+///         something goes wrong while decoding or `s` doesn't have that many
+///         characters.
+size_t twDecodeUTF16(const char *s, twChar *cs, size_t n);
+
 //
 // `twString` functions
 //
@@ -104,6 +122,27 @@ twString twTailUTF8(twString s);
 /// @param s A UTF-16 encoded string.
 /// @return The tail of `s` (All except the first character.)
 twString twTailUTF16(twString s);
+
+/// @brief The first character in `s`.
+/// @param s An ASCII encoded string.
+/// @return If `s` isn't empty, the first character in `s`. Otherwise, returns
+///         0. Check codepoint length to determine if the first character was
+///         actually 0 or if there is no first character.
+twChar twFirstASCII(twString s);
+
+/// @brief The first character in `s`.
+/// @param s An UTF-8 encoded string.
+/// @return If `s` isn't empty, the first character in `s`. Otherwise, returns
+///         0. Check codepoint length to determine if the first character was
+///         actually 0 or if there is no first character.
+twChar twFirstUTF8(twString s);
+
+/// @brief The first character in `s`.
+/// @param s An UTF-16 encoded string.
+/// @return If `s` isn't empty, the first character in `s`. Otherwise, returns
+///         0. Check codepoint length to determine if the first character was
+///         actually 0 or if there is no first character.
+twChar twFirstUTF16(twString s);
 
 /// @brief The last character in `s`.
 /// @return If `s` isn't empty, the function returns the last character in `s`.
@@ -279,20 +318,6 @@ int twEncodedCodepointLengthUTF16(char byte1);
 ///        white space character.
 bool twIsSpace(twChar c);
 
-/// @brief Decodes a single UTF-8 character sequence into a codepoint.
-/// @param bytes The UTF-8 encoded character to decode.
-/// @param result [OUT] The decoded character.
-/// @return Returns 0 if decoding was unsuccessful. Otherwise, returns length
-///         of the encoded character.
-int twDecodeUTF8(twString bytes, twChar *result);
-
-/// @brief Decodes a single UTF-16 character sequence into a codepoint.
-/// @param bytes The UTF-16 encoded character to decode.
-/// @param result [OUT] The decoded character.
-/// @return Returns 0 if decoding was unsuccessful. Otherwise, returns length
-///         of the encoded character.
-int twDecodeUTF16(twString bytes, twChar *result);
-
 //
 // Iteration functions
 //
@@ -423,6 +448,81 @@ int twEncodeUTF16(char *bytes, int nbytes, twChar c) {
     return codepoint_length;
 }
 
+size_t twDecodeUTF8(const char *s, twChar *cs, size_t n) {
+    size_t ndecoded = 0; 
+
+    while (n > 0 && s[0] != 0) {
+        int codepoint_length = twEncodedCodepointLengthUTF8(s[0]);
+
+        switch (codepoint_length) {
+            case 1:
+                cs[ndecoded] = s[0];
+                break;
+            case 2: {
+                twChar byte1 = s[0];
+                twChar byte2 = s[1];
+                cs[ndecoded] = (byte1 & 0x1F) << 6 | (byte2 & 0x3F);
+                break;
+            }
+            case 3: {
+                twChar byte1 = s[0];
+                twChar byte2 = s[1];
+                twChar byte3 = s[2];
+                cs[ndecoded] = (byte1 & 0x0F) << 12 | (byte2 & 0x3F) << 6 | (byte3 & 0x3F);
+                break;
+            }
+            case 4: {
+                twChar byte1 = s[0];
+                twChar byte2 = s[1];
+                twChar byte3 = s[2];
+                twChar byte4 = s[3];
+                cs[ndecoded] = (byte1 & 0x07) << 18 | (byte2 & 0x3F) << 12 | (byte3 & 0x3F) << 6 | (byte4 & 0x3F);
+                break;
+            }
+            default:
+                goto RETURN;
+        }
+
+        n--;
+        ndecoded++;
+        s += codepoint_length;
+    }
+
+RETURN:
+    return ndecoded;
+}
+
+size_t twDecodeUTF16(const char *s, twChar *cs, size_t n) {
+    size_t ndecoded = 0; 
+
+    while (n > 0 && s[0] != 0) {
+        int codepoint_length = twEncodedCodepointLengthUTF16(s[0]);
+
+        switch (codepoint_length) {
+            case 2: {
+                cs[ndecoded] = (s[0] << 8) | (s[1]);
+                break;
+            }
+            case 4: {
+                uint32_t fw = (s[0] << 8) | (s[1]);
+                uint32_t sw = (s[2] << 8) | (s[3]);
+                cs[ndecoded] = ((fw - 0xD800) << 10) + (sw - 0xDC00) + 0x10000;
+                break;
+            }
+            default: {
+                goto RETURN;
+            }
+        }
+
+        n--;
+        ndecoded++;
+        s += codepoint_length;
+    }
+
+RETURN:
+    return ndecoded;
+}
+
 //
 // `twString` functions
 //
@@ -547,6 +647,42 @@ twString twTailUTF16(twString s) {
     return twDrop(s, c_len);
 }
 
+twChar twFirstASCII(twString s) {
+    if (s.length == 0) {
+        return 0;
+    }
+
+    return s.bytes[0];
+}
+
+twChar twFirstUTF8(twString s) {
+    if (s.length == 0) {
+        return 0;
+    }
+
+    twChar c;
+    int nchars = twDecodeUTF8(s.bytes, &c, 1);
+    if (nchars != 1) {
+        return 0;
+    }
+
+    return c;
+}
+
+twChar twFirstUTF16(twString s) {
+    if (s.length == 0) {
+        return 0;
+    }
+
+    twChar c;
+    int nchars = twDecodeUTF16(s.bytes, &c, 1);
+    if (nchars != 1) {
+        return 0;
+    }
+
+    return c;
+}
+
 twChar twLastASCII(twString s) {
     if (s.length == 0) {
         return 0;
@@ -564,8 +700,8 @@ twChar twLastUTF8(twString s) {
         int len = twEncodedCodepointLengthUTF8(s.bytes[i]);
         if (len != 0) {
             twChar c;
-            int c_len = twDecodeUTF8((twString){s.bytes + i, len}, &c);
-            if (c_len != len) {
+            int nchars = twDecodeUTF8(&s.bytes[i], &c, 1);
+            if (nchars != 1) {
                 return 0;
             }
 
@@ -585,8 +721,8 @@ twChar twLastUTF16(twString s) {
         int len = twEncodedCodepointLengthUTF16(s.bytes[i]);
         if (len != 0) {
             twChar c;
-            int c_len = twDecodeUTF16((twString){s.bytes + i, len}, &c);
-            if (c_len != len) {
+            int nchars = twDecodeUTF16(&s.bytes[i], &c, 1);
+            if (nchars != 1) {
                 return 0;
             }
 
@@ -1045,65 +1181,6 @@ bool twIsSpace(twChar c) {
     }
 }
 
-int twDecodeUTF8(twString bytes, twChar *result) {
-    int codepoint_length = twEncodedCodepointLengthUTF8(bytes.bytes[0]);
-
-    switch (codepoint_length) {
-        case 1:
-            *result = bytes.bytes[0];
-            break;
-        case 2: {
-            twChar byte1 = bytes.bytes[0];
-            twChar byte2 = bytes.bytes[1];
-            *result = (byte1 & 0x1F) << 6 | (byte2 & 0x3F);
-            break;
-        }
-        case 3: {
-            twChar byte1 = bytes.bytes[0];
-            twChar byte2 = bytes.bytes[1];
-            twChar byte3 = bytes.bytes[2];
-            *result = (byte1 & 0x0F) << 12 | (byte2 & 0x3F) << 6 | (byte3 & 0x3F);
-            break;
-        }
-        case 4: {
-            twChar byte1 = bytes.bytes[0];
-            twChar byte2 = bytes.bytes[1];
-            twChar byte3 = bytes.bytes[2];
-            twChar byte4 = bytes.bytes[3];
-            *result = (byte1 & 0x07) << 18 | (byte2 & 0x3F) << 12 | (byte3 & 0x3F) << 6 | (byte4 & 0x3F);
-            break;
-        }
-        default:
-            *result = 0;
-            return 0;
-    }
-
-    return codepoint_length;
-}
-
-int twDecodeUTF16(twString bytes, twChar *result) {
-    int codepoint_length = twEncodedCodepointLengthUTF16(bytes.bytes[0]);
-
-    switch (codepoint_length) {
-        case 2: {
-            *result = (bytes.bytes[0] << 8) | (bytes.bytes[1]);
-            break;
-        }
-        case 4: {
-            uint32_t fw = (bytes.bytes[0] << 8) | (bytes.bytes[1]);
-            uint32_t sw = (bytes.bytes[2] << 8) | (bytes.bytes[3]);
-            *result = ((fw - 0xD800) << 10) + (sw - 0xDC00) + 0x10000;
-            break;
-        }
-        default: {
-            *result = 0;
-            break;
-        }
-    }
-
-    return codepoint_length;
-}
-
 //
 // Iteration functions
 //
@@ -1121,43 +1198,29 @@ int twNextASCII(twString *iter, char *result) {
 }
 
 int twNextUTF8(twString *iter, twChar *result) {
-    if (iter->length == 0) {
-        goto FAIL;
+    twChar c = twFirstUTF8(*iter);
+    if (c == 0) {
+        if (result) *result = 0;
+        return 0;
     }
 
-    int codepoint_length = result ? twDecodeUTF8(*iter, result)
-                                  : twEncodedCodepointLengthUTF8(iter->bytes[0]);
-    if (codepoint_length == 0) {
-        goto FAIL;
-    }
-
+    int codepoint_length = twCodepointLengthUTF8(c);
     *iter = twDrop(*iter, codepoint_length);
-
+    if (result) *result = c;
     return codepoint_length;
-
-FAIL:
-    if (result) *result = 0;
-    return 0;
 }
 
 int twNextUTF16(twString *iter, twChar *result) {
-    if (iter->length == 0) {
-        goto FAIL;
+    twChar c = twFirstUTF16(*iter);
+    if (c == 0) {
+        if (result) *result = 0;
+        return 0;
     }
 
-    int codepoint_length = result ? twDecodeUTF16(*iter, result)
-                                  : twEncodedCodepointLengthUTF16(iter->bytes[0]);
-    if (codepoint_length == 0) {
-        goto FAIL;
-    }
-
+    int codepoint_length = twCodepointLengthUTF16(c);
     *iter = twDrop(*iter, codepoint_length);
-
+    if (result) *result = c;
     return codepoint_length;
-
-FAIL:
-    if (result) *result = 0;
-    return 0;
 }
 
 int twNextRevASCII(twString *iter, char *result) {
