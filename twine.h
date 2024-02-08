@@ -23,8 +23,8 @@ typedef struct twStringBuf {
     size_t max_capacity;
 } twStringBuf;
 
-/// @brief a 32-bit integer used to represent characters as Unicode codepoints.
-typedef uint32_t twChar;
+/// @brief An (at least) 32-bit integer used to represent characters as Unicode codepoints.
+typedef uint_least32_t twChar;
 
 //
 // C-String functions
@@ -937,13 +937,27 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
+    char *chars;
+
     char temp[1024];
     int len = vsnprintf(temp, sizeof(temp), fmt, args);
+    if (len >= sizeof(temp)) {
+        chars = malloc((len + 1) * sizeof(*chars)); // Plus 1 for null terminator
+        len = vsnprintf(chars, len, fmt, args);
+    } else {
+        chars = temp;
+    }
 
     va_end(args);
 
-    twString to_add = {temp, len};
-    return twAppendUTF8(buf, to_add);
+    twString to_add = {chars, len};
+    bool result = twAppendUTF8(buf, to_add);
+
+    if (chars != temp) {
+        free(chars);
+    }
+
+    return result;
 }
 
 bool twAppendFmtUTF16(twStringBuf *buf, const char * restrict fmt, ...) {
