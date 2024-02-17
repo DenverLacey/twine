@@ -73,6 +73,15 @@ twString twStr(const char *s);
 ///        string to find it's length.
 #define twStatic(S) (twString){ .bytes = S, .length = sizeof(S) - 1 }
 
+/// @brief Duplicate the contents of a `twString`.
+/// @param s The string to duplicate.
+/// @return a newly allocated `twString` with identical contents to `s`.
+twString twDup(twString s);
+
+/// @brief Free's the contents of a `twString`.
+/// @param s The string to deallocate.
+void twFree(twString s);
+
 /// @brief Calculates the number of graphemes in `s`.
 /// @param s A UTF-8 encoded string.
 size_t twLenUTF8(twString s);
@@ -211,6 +220,23 @@ twString twTrimUTF16(twString s);
     .max_capacity = sizeof(S) \
 }
 
+/// @brief A new zero-ed `twStringBuf`.
+twStringBuf twNewBuf(void);
+
+/// @brief A new `twStringBuf` with a max capacity.
+/// @param max_capacity The maximum capacity of the new `twStringBuf`.
+/// @note  This function doesn't allocate.
+twStringBuf twNewBufWithMaxCapacity(size_t max_capacity);
+
+/// @brief A new `twStringBuf` initialized with a newly allocated buffer of
+///        `capacity` bytes.
+/// @param capacity Number of bytes to initalize the buffer with.
+twStringBuf twNewBufWithCapacity(size_t capacity);
+
+/// @brief Deallocates the contents of a `twStringBuf`.
+/// @param buf The buffer to deallocate.
+void twFreeBuf(twStringBuf buf);
+
 /// @brief Creates a `twString` from a `twStringBuf`.
 twString twBufToString(twStringBuf buf);
 
@@ -244,12 +270,12 @@ bool twAppendUTF16(twStringBuf *buf, twString s);
 /// @brief Appends a formatted string to the end of a string buffer.
 /// @param buf A UTF-8 encoded string buffer.
 /// @return True if string was added sucessfully. Otherwise, returns false.
-bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...);
+bool twAppendFmtUTF8(twStringBuf *buf, const char *__restrict fmt, ...);
 
 /// @brief Appends a formatted string to the end of a string buffer.
 /// @param buf A UTF-16 encoded string buffer.
 /// @return True if string was added sucessfully. Otherwise, returns false.
-bool twAppendFmtUTF16(twStringBuf *buf, const char * restrict fmt, ...);
+bool twAppendFmtUTF16(twStringBuf *buf, const char *__restrict fmt, ...);
 
 /// @brief Appends a string to the end of a string buffer and adds a newline.
 /// @param buf A UTF-8 encoded string buffer.
@@ -393,6 +419,14 @@ int twNextRevUTF16(twString *iter, twChar *result);
 #ifndef _TWINE_H_IMPLEMENTATION_
 #define _TWINE_H_IMPLEMENTATION_
 
+#ifndef twAlloc
+#define twAlloc(n) malloc(n)
+#endif
+
+#ifndef twDealloc
+#define twDealloc(p) free(p)
+#endif
+
 //
 // C-String functions
 //
@@ -533,6 +567,25 @@ twString twStr(const char *s) {
     } else {
         return (twString){0};
     }
+}
+
+twString twDup(twString s) {
+    char *new_bytes = twAlloc(s.length);
+    if (new_bytes == NULL) {
+        return (twString){0};
+    }
+    
+    memcpy(new_bytes, s.bytes, s.length);
+
+    return (twString){
+        .bytes = new_bytes,
+        .length = s.length
+    };
+}
+
+void twFree(twString s) {
+    if (s.bytes == NULL) return;
+    twDealloc((void*)s.bytes);
 }
 
 size_t twLenUTF8(twString s) {
@@ -837,6 +890,33 @@ twString twTrimUTF16(twString s) {
 // `twStringBuilder` functions
 //
 
+twStringBuf twNewBuf(void) {
+    return (twStringBuf){0};
+}
+
+twStringBuf twNewBufWithMaxCapacity(size_t max_capacity) {
+    return (twStringBuf){
+        .max_capacity = max_capacity
+    };
+}
+
+twStringBuf twNewBufWithCapacity(size_t capacity) {
+    char *bytes = twAlloc(capacity);
+    if (bytes == NULL) {
+        return (twStringBuf){0};
+    }
+
+    return (twStringBuf){
+        .bytes = bytes,
+        .capacity = capacity
+    };
+}
+
+void twFreeBuf(twStringBuf buf) {
+    if (buf.bytes == NULL) return;
+    twDealloc(buf.bytes);
+}
+
 twString twBufToString(twStringBuf buf) {
     return *(twString*)&buf;
 }
@@ -942,7 +1022,7 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
     char temp[1024];
     int len = vsnprintf(temp, sizeof(temp), fmt, args);
     if (len >= sizeof(temp)) {
-        chars = malloc((len + 1) * sizeof(*chars)); // Plus 1 for null terminator
+        chars = twAlloc((len + 1) * sizeof(*chars)); // Plus 1 for null terminator
         len = vsnprintf(chars, len, fmt, args);
     } else {
         chars = temp;
@@ -954,7 +1034,7 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
     bool result = twAppendUTF8(buf, to_add);
 
     if (chars != temp) {
-        free(chars);
+        twDealloc(chars);
     }
 
     return result;
