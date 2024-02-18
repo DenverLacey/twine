@@ -9,6 +9,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __cplusplus
+    #define TWLIT(T) T
+#else
+    #define TWLIT(T) (T)
+#endif
+
+//
+// Types
+//
+
 /// @brief Simple pointer-and-length string.
 typedef struct twString {
     const char *bytes;
@@ -25,6 +35,8 @@ typedef struct twStringBuf {
 
 /// @brief An (at least) 32-bit integer used to represent characters as Unicode codepoints.
 typedef uint_least32_t twChar;
+
+typedef bool (*twSplitByPredicate)(twChar);
 
 //
 // C-String functions
@@ -71,7 +83,7 @@ twString twStr(const char *s);
 
 /// @brief Creates a `twString` from a static C string without walking the
 ///        string to find it's length.
-#define twStatic(S) (twString){ .bytes = S, .length = sizeof(S) - 1 }
+#define twStatic(S) TWLIT(twString){ .bytes = S, .length = sizeof(S) - 1 }
 
 /// @brief Duplicate the contents of a `twString`.
 /// @param s The string to duplicate.
@@ -113,6 +125,20 @@ twString twSplitUTF8(twString s, twChar c, twString *remainder);
 /// @param remainder [OUT, OPT] The rest of the string after the split character.
 /// @return A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitUTF16(twString s, twChar c, twString *remainder);
+
+/// @brief Splits a string by a predicate. (The split character is not included.)
+/// @param s The UTF-8 encoded string to split.
+/// @param pred The predicate function used to split the string.
+/// @param remainder [OUT, OPT] The rest of the string after the split character.
+/// @return A string slice of the contents of `s` before the first instance of `c`.
+twString twSplitByUTF8(twString s, twSplitByPredicate pred, twString *remainder);
+
+/// @brief Splits a string by a predicate. (The split character is not included.)
+/// @param s The UTF-16 encoded string to split.
+/// @param pred The predicate function used to split the string.
+/// @param remainder [OUT, OPT] The rest of the string after the split character.
+/// @return A string slice of the contents of `s` before the first instance of `c`.
+twString twSplitByUTF16(twString s, twSplitByPredicate pred, twString *remainder);
 
 /// @brief The first character of `s` as a `twString`.
 /// @param s A UTF-8 encoded string.
@@ -213,7 +239,7 @@ twString twTrimUTF16(twString s);
 /// @brief Creates a `twStringBuf` out of a static buffer.
 /// @param S The buffer to wrap.
 /// @return A `twStringBuf` whose memory is preallocated in a static buffer.
-#define twStaticBuf(S) (twStringBuf){ \
+#define twStaticBuf(S) TWLIT(twStringBuf){ \
     .bytes = S, \
     .length = 0, \
     .capacity = sizeof(S), \
@@ -319,6 +345,11 @@ bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s);
 
 /// @brief Removes every character from a string buffer.
 void twClear(twStringBuf *buf);
+
+/// @brief Does `buf` have a maximum capacity.
+/// @param buf The buffer in question.
+/// @return True if `buf` has a maximum capacity that cannot be exceeded.
+bool twHasMaxCapacity(twStringBuf buf);
 
 //
 // `twChar` functions
@@ -563,21 +594,21 @@ RETURN:
 
 twString twStr(const char *s) {
     if (s) {
-        return (twString){ .bytes = s, .length = strlen(s) };
+        return TWLIT(twString){ .bytes = s, .length = strlen(s) };
     } else {
-        return (twString){0};
+        return TWLIT(twString){0};
     }
 }
 
 twString twDup(twString s) {
     char *new_bytes = twAlloc(s.length);
     if (new_bytes == NULL) {
-        return (twString){0};
+        return TWLIT(twString){0};
     }
     
     memcpy(new_bytes, s.bytes, s.length);
 
-    return (twString){
+    return TWLIT(twString){
         .bytes = new_bytes,
         .length = s.length
     };
@@ -668,26 +699,58 @@ twString twSplitUTF16(twString s, twChar c, twString *remainder) {
     return result;
 }
 
+twString twSplitByUTF8(twString s, twSplitByPredicate pred, twString *remainder) {
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    twChar cur;
+    int curlen;
+    while ((curlen = twNextUTF8(&s, &cur)) > 0 && !pred(cur)) {
+        result.length += curlen;
+        if (s.length <= 0) {
+            break;
+        }
+    }
+
+    if (remainder) *remainder = s;
+    return result;
+}
+
+twString twSplitByUTF16(twString s, twSplitByPredicate pred, twString *remainder) {
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    twChar cur;
+    int curlen;
+    while ((curlen = twNextUTF16(&s, &cur)) > 0 && !pred(cur)) {
+        result.length += curlen;
+        if (s.length <= 0) {
+            break;
+        }
+    }
+
+    if (remainder) *remainder = s;
+    return result;
+}
+
 twString twHeadUTF8(twString s) {
     int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
     if (c_len == 0) {
-        return (twString){0};
+        return TWLIT(twString){0};
     }
-    return (twString){ .bytes = s.bytes, .length = c_len };
+    return TWLIT(twString){ .bytes = s.bytes, .length = c_len };
 }
 
 twString twHeadUTF16(twString s) {
     int c_len = twEncodedCodepointLengthUTF16(s.bytes[0]);
     if (c_len == 0) {
-        return (twString){0};
+        return TWLIT(twString){0};
     }
-    return (twString){ .bytes = s.bytes, .length = c_len };
+    return TWLIT(twString){ .bytes = s.bytes, .length = c_len };
 }
 
 twString twTailUTF8(twString s) {
     int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
     if (c_len == 0) {
-        return (twString){0};
+        return TWLIT(twString){0};
     }
     return twDrop(s, c_len);
 }
@@ -695,7 +758,7 @@ twString twTailUTF8(twString s) {
 twString twTailUTF16(twString s) {
     int c_len = twEncodedCodepointLengthUTF16(s.bytes[0]);
     if (c_len == 0) {
-        return (twString){0};
+        return TWLIT(twString){0};
     }
     return twDrop(s, c_len);
 }
@@ -788,7 +851,7 @@ twChar twLastUTF16(twString s) {
 
 twString twDrop(twString s, size_t n) {
     int num_dropped = s.length < n ? s.length : n;
-    return (twString){
+    return TWLIT(twString){
         .bytes = s.bytes + num_dropped,
         .length = s.length - num_dropped
     };
@@ -846,7 +909,7 @@ twString twTrimRightUTF8(twString s) {
         ndrop += c_len;
     }
 
-    return (twString){
+    return TWLIT(twString){
         .bytes = s.bytes,
         .length = s.length - ndrop
     };
@@ -868,7 +931,7 @@ twString twTrimRightUTF16(twString s) {
         ndrop += c_len;
     }
 
-    return (twString){
+    return TWLIT(twString){
         .bytes = s.bytes,
         .length = s.length - ndrop
     };   
@@ -891,11 +954,11 @@ twString twTrimUTF16(twString s) {
 //
 
 twStringBuf twNewBuf(void) {
-    return (twStringBuf){0};
+    return TWLIT(twStringBuf){0};
 }
 
 twStringBuf twNewBufWithMaxCapacity(size_t max_capacity) {
-    return (twStringBuf){
+    return TWLIT(twStringBuf){
         .max_capacity = max_capacity
     };
 }
@@ -903,10 +966,10 @@ twStringBuf twNewBufWithMaxCapacity(size_t max_capacity) {
 twStringBuf twNewBufWithCapacity(size_t capacity) {
     char *bytes = twAlloc(capacity);
     if (bytes == NULL) {
-        return (twStringBuf){0};
+        return TWLIT(twStringBuf){0};
     }
 
-    return (twStringBuf){
+    return TWLIT(twStringBuf){
         .bytes = bytes,
         .capacity = capacity
     };
@@ -1186,6 +1249,10 @@ bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s) {
 
 void twClear(twStringBuf *buf) {
     buf->length = 0;
+}
+
+bool twHasMaxCapacity(twStringBuf buf) {
+    return buf.max_capacity != 0;
 }
 
 //
