@@ -19,3 +19,4 @@ int main(void) {
         printf("U+%04X\n", c);
     }
 }
+

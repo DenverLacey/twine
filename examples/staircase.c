@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 
 #define TWINE_IMPLEMENTATION
 #include "../twine.h"
@@ -23,3 +22,4 @@ int main(int argc, const char **argv) {
 
     return 0;
 }
+
