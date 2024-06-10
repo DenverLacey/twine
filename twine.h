@@ -38,47 +38,70 @@ typedef uint_least32_t twChar;
 
 typedef bool (*twSplitByPredicate)(twChar);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 // C-String functions
 //
 
 /// Encodes a unicode codepoint as UTF-8 into a given buffer.
-/// bytes [OUT] Destination bytes of the encoded character.
-/// nbytes Number of bytes available for encoding.
-/// c The character to encode.
+///
+/// Paramters:
+/// - `bytes` [OUT]: Destination bytes of the encoded character.
+/// - `nbytes`: Number of bytes available for encoding.
+/// - `c`: The character to encode.
+///
+/// Returns:
 /// The codepoint length of `c`.
 int twEncodeUTF8(char *bytes, int nbytes, twChar c);
 
 /// Encodes a unicode codepoint as UTF-16 into a given buffer.
-/// bytes [OUT] Destination bytes of the encoded character.
-/// nbytes Number of bytes available for encoding.
-/// c The character to encode.
+///
+/// Parameters:
+/// - `bytes` [OUT]: Destination bytes of the encoded character.
+/// - `nbytes`: Number of bytes available for encoding.
+/// - `c`: The character to encode.
+///
+/// Returns:
 /// The codepoint length of `c`.
 int twEncodeUTF16(char *bytes, int nbytes, twChar c);
 
 /// Decodes the first `n` characters in `s`.
-/// s The UTF-8 encoded string to decode.
-/// cs [OUT] The destination for the decoded characters.
-//// n How many characters to decode. (`cs` assumed to have enough space)
+///
+/// Parameters:
+/// - `s`: The UTF-8 encoded string to decode.
+/// - `cs` [OUT]: The destination for the decoded characters.
+/// - `n`: How many characters to decode. (`cs` assumed to have enough space.)
+///
+/// Returns:
 /// How many characters were decoded. This can be fewer than `n` if
-///         something goes wrong while decoding or `s` doesn't have that many
-///         characters.
+/// something goes wrong while decoding or `s` doesn't have that many
+/// characters.
 size_t twDecodeUTF8(const char *s, twChar *cs, size_t n);
 
 /// Decodes the first `n` characters in `s`.
-/// s The UTF-16 encoded string to decode.
-/// cs [OUT] The destination for the decoded characters.
-//// n How many characters to decode. (`cs` assumed to have enough space)
+///
+/// Parameters:
+/// - `s`: The UTF-16 encoded string to decode.
+/// - `cs` [OUT]: The destination for the decoded characters.
+/// - `n`: How many characters to decode. (`cs` assumed to have enough space.)
+///
+/// Returns:
 /// How many characters were decoded. This can be fewer than `n` if
-///         something goes wrong while decoding or `s` doesn't have that many
-///         characters.
+/// something goes wrong while decoding or `s` doesn't have that many
+/// characters.
 size_t twDecodeUTF16(const char *s, twChar *cs, size_t n);
 
 //
 // `twString` functions
 //
 
-/// Creates a `twString` from a C string. (Doesn't allocate.)
+/// Creates a `twString` from a C string.
+///
+/// Note:
+/// Points to the original string and therefore doesn't allocate.
 twString twStr(const char *s);
 
 /// Creates a `twString` from a static C string without walking the
@@ -86,20 +109,30 @@ twString twStr(const char *s);
 #define twStatic(S) TWLIT(twString){ .bytes = S, .length = sizeof(S) - 1 }
 
 /// Duplicate the contents of a `twString`.
-/// s The string to duplicate.
-/// a newly allocated `twString` with identical contents to `s`.
+///
+/// Parameters:
+/// - `s`: The string to duplicate.
+///
+/// Returns:
+/// A newly allocated `twString` with identical contents to `s`.
 twString twDup(twString s);
 
 /// Free's the contents of a `twString`.
-/// s The string to deallocate.
+///
+/// Parameters:
+/// - `s`: The string to deallocate.
 void twFree(twString s);
 
 /// Calculates the number of graphemes in `s`.
-/// s A UTF-8 encoded string.
+///
+/// Parameters:
+/// - `s`: A UTF-8 encoded string.
 size_t twLenUTF8(twString s);
 
 /// Calculates the number of graphemes in `s`.
-/// s A UTF-16 encoded string.
+///
+/// Parameters:
+/// - `s`: A UTF-16 encoded string.
 size_t twLenUTF16(twString s);
 
 /// Checks that `s` is a valid sequence of UTF-16.
@@ -109,20 +142,29 @@ bool twIsValidUTF8(twString s);
 bool twIsValidUTF16(twString s);
 
 /// Comapres two strings.
-/// Returns `true` if the strings are equal, and `false` if not.
+/// Returns:
+/// `true` if the strings are equal, and `false` if not.
 bool twEqual(twString a, twString b);
 
 /// Splits a string by a character. (The split character is not included.)
-/// s The UTF-8 encoded string to split.
-/// c The charcter to search for.
-/// remainder [OUT, OPT] The rest of the string after the split character.
+///
+/// Parameters:
+/// - `s`: The UTF-8 encoded string to split.
+/// - `c`: The charcter to search for.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
 /// A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitUTF8(twString s, twChar c, twString *remainder);
 
 /// Splits a string by a character. (The split character is not included.)
-/// s The UTF-16 encoded string to split.
-/// c The charcter to search for.
-/// remainder [OUT, OPT] The rest of the string after the split character.
+///
+/// Parameters:
+/// - `s`: The UTF-16 encoded string to split.
+/// - `c` The charcter to search for.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
 /// A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitUTF16(twString s, twChar c, twString *remainder);
 
@@ -160,101 +202,174 @@ twString twSplitByUTF16(twString s, twSplitByPredicate pred, twString *remainder
 twString twSplitWhileUTF8(twString s, twSplitByPredicate pred, twString *remainder);
 
 /// Splits a string by a predicate. (The split character is not included.)
-/// s The UTF-16 encoded string to split.
-/// pred The predicate function used to split the string.
-/// remainder [OUT, OPT] The rest of the string after the split character.
+///
+/// Paramters:
+/// - `s`: The UTF-16 encoded string to split.
+/// - `pred`: The predicate function used to split the string.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
 /// A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitWhileUTF16(twString s, twSplitByPredicate pred, twString *remainder);
 
 /// The first character of `s` as a `twString`.
-/// s A UTF-8 encoded string.
+///
+/// Paramters:
+/// - `s`: A UTF-8 encoded string.
+///
+/// Returns:
 /// The in-place bytes of the first character.
 twString twHeadUTF8(twString s);
 
 /// The first character of `s` as a `twString`.
-/// s A UTF-16 encoded string.
+///
+/// Paramters:
+/// - `s`: A UTF-16 encoded string.
+///
+/// Returns:
 /// The in-place bytes of the first character.
 twString twHeadUTF16(twString s);
 
-/// s A UTF-8 encoded string.
+/// Paramters:
+/// - `s`: A UTF-8 encoded string.
+///
+/// Returns:
 /// The tail of `s` (All except the first character.)
 twString twTailUTF8(twString s);
 
-/// s A UTF-16 encoded string.
+/// Paramters:
+/// - `s`: A UTF-16 encoded string.
+///
+/// Returns:
 /// The tail of `s` (All except the first character.)
 twString twTailUTF16(twString s);
 
 /// The first character in `s`.
-/// s An ASCII encoded string.
-/// If `s` isn't empty, the first character in `s`. Otherwise, returns
-///         0. Check codepoint length to determine if the first character was
-///         actually 0 or if there is no first character.
+///
+/// Paramters:
+/// - `s`: An ASCII encoded string.
+///
+/// Returns:
+/// If `s` isn't empty, the first character in `s`. Otherwise, returns 0.
+/// Check codepoint length to determine if the first character was
+/// actually 0 or if there is no first character.
 twChar twFirstASCII(twString s);
 
 /// The first character in `s`.
-/// s An UTF-8 encoded string.
-/// If `s` isn't empty, the first character in `s`. Otherwise, returns
-///         0. Check codepoint length to determine if the first character was
-///         actually 0 or if there is no first character.
+///
+/// Paramters:
+/// - `s`: An UTF-8 encoded string.
+///
+/// Returns:
+/// If `s` isn't empty, the first character in `s`. Otherwise, returns 0.
+/// Check codepoint length to determine if the first character was
+/// actually 0 or if there is no first character.
 twChar twFirstUTF8(twString s);
 
 /// The first character in `s`.
-/// s An UTF-16 encoded string.
-/// If `s` isn't empty, the first character in `s`. Otherwise, returns
-///         0. Check codepoint length to determine if the first character was
-///         actually 0 or if there is no first character.
+///
+/// Paramters:
+/// - `s`: An UTF-16 encoded string.
+///
+/// Returns:
+/// If `s` isn't empty, the first character in `s`. Otherwise, returns 0.
+/// Check codepoint length to determine if the first character was
+/// actually 0 or if there is no first character.
 twChar twFirstUTF16(twString s);
 
 /// The last character in `s`.
-/// If `s` isn't empty, the function returns the last character in `s`.
-///         Otherwise, it returns 0. Check length to determine if the last
-///         character was actually 0 or if there is no last character.
+///
+/// Paramters:
+/// - `s`: An ASCII string.
+///
+/// Returns:
+/// If `s` isn't empty, the last character in `s`. Otherwise, it returns 0.
+/// Check length to determine if the last character was actually 0 or if
+/// there is no last character.
 twChar twLastASCII(twString s);
 
 /// The last character in `s`.
-/// If `s` isn't empty, the function returns the last character in `s`.
-///         Otherwise, it returns 0. Check length to determine if the last
-///         character was actually 0 or if there is no last character.
+///
+/// Paramters:
+/// - `s`: A UTF-8 string.
+///
+/// Returns:
+/// If `s` isn't empty, the last character in `s`. Otherwise, it returns 0.
+/// Check length to determine if the last character was actually 0 or if
+/// there is no last character.
 twChar twLastUTF8(twString s);
 
-/// The last UTF-16 character in `s`.
-/// If `s` isn't empty, the function returns the last character in `s`.
-///         Otherwise, it returns 0. Check length to determine if the last
-///         character was actually 0 or if there is no last character.
+/// The last character in `s`.
+///
+/// Paramters:
+/// - `s`: A UTF-16 string.
+///
+/// Returns:
+/// If `s` isn't empty, the last character in `s`. Otherwise, it returns 0.
+/// Check length to determine if the last character was actually 0 or if
+/// there is no last character.
 twChar twLastUTF16(twString s);
 
 /// Drop the first `n` bytes of `s`.
-/// n Number of bytes to drop.
+///
+/// Parameters:
+/// - `n`: Number of bytes to drop.
+///
+/// Returns:
 /// New `twString` with first `n` bytes of `s` removed.
 twString twDrop(twString s, size_t n);
 
 /// Removes all leading whitespace characters.
-/// s A UTF-8 encoded string.
+///
+/// Parameters:
+/// - `s`: A UTF-8 encoded string.
+///
+/// Returns:
 /// A `twString` with leading whitesapce removed. (Points to original data.)
 twString twTrimLeftUTF8(twString s);
 
 /// Removes all leading whitespace characters.
-/// s A UTF-16 encoded string.
+///
+/// Paramters:
+/// - `s`: A UTF-16 encoded string.
+///
+/// Returns:
 /// A `twString` with leading whitesapce removed. (Points to original data.)
 twString twTrimLeftUTF16(twString s);
 
 /// Removes all trailing whitespace characters.
-/// s A UTF-8 encoded string.
+///
+/// Parameters:
+/// - `s`: A UTF-8 encoded string.
+///
+/// Returns:
 /// A `twString` with trailing whitesapce removed. (Points to original data.)
 twString twTrimRightUTF8(twString s);
 
 /// Removes all trailing whitespace characters.
-/// s A UTF-16 encoded string.
+///
+/// Parameters:
+/// - `s`: A UTF-16 encoded string.
+///
+/// Returns:
 /// A `twString` with trailing whitesapce removed. (Points to original data.)
 twString twTrimRightUTF16(twString s);
 
 /// Removes all leading and trailing whitespace characters.
-/// s A UTF-8 encoded string.
+///
+/// Parameters:
+/// - `s`: A UTF-8 encoded string.
+///
+/// Returns:
 /// A `twString` with leading and trailing whitesapce removed. (Points to original data.)
 twString twTrimUTF8(twString s);
 
 /// Removes all leading and trailing whitespace characters.
-/// s A UTF-16 encoded string.
+///
+/// Parameters:
+/// - `s`: A UTF-16 encoded string.
+///
+/// Returns:
 /// A `twString` with leading and trailing whitesapce removed. (Points to original data.)
 twString twTrimUTF16(twString s);
 
@@ -263,7 +378,11 @@ twString twTrimUTF16(twString s);
 //
 
 /// Creates a `twStringBuf` out of a static buffer.
-/// S The buffer to wrap.
+///
+/// Parameters:
+/// - `S`: The buffer to wrap.
+///
+/// Returns:
 /// A `twStringBuf` whose memory is preallocated in a static buffer.
 #define twStaticBuf(S) TWLIT(twStringBuf){ \
     .bytes = S, \
@@ -276,52 +395,85 @@ twString twTrimUTF16(twString s);
 twStringBuf twNewBuf(void);
 
 /// A new `twStringBuf` with a max capacity.
-/// max_capacity The maximum capacity of the new `twStringBuf`.
-///  This function doesn't allocate.
+///
+/// Parameters:
+/// - `max_capacity`: The maximum capacity of the new `twStringBuf`.
+///
+/// Note:
+/// This function doesn't allocate.
 twStringBuf twNewBufWithMaxCapacity(size_t max_capacity);
 
 /// A new `twStringBuf` initialized with a newly allocated buffer of
-///        `capacity` bytes.
-/// capacity Number of bytes to initalize the buffer with.
+/// `capacity` bytes.
+///
+/// Parameters:
+/// - `capacity`: Number of bytes to initalize the buffer with.
 twStringBuf twNewBufWithCapacity(size_t capacity);
 
 /// Deallocates the contents of a `twStringBuf`.
-/// buf The buffer to deallocate.
+///
+/// Paramters:
+/// - `buf`: The buffer to deallocate.
 void twFreeBuf(twStringBuf buf);
 
 /// Creates a `twString` from a `twStringBuf`.
 twString twBufToString(twStringBuf buf);
 
-/// Extends the size of the buffer to be `new_size` unless `new_size`
-///        exceeds `max_capacity`.
-/// True if buffer was extended successfully. Otherwise, returns false.
+/// Extends the size of the buffer except when that would exceed `max_capacity`.
+///
+/// Parameters:
+/// - `buf`: The string buffer to extend.
+/// - `new_size`: The new desired size of the buffer.
+///
+/// Returns:
+/// `true` if buffer was extended successfully. Otherwise, returns `false`.
 bool twExtendBuf(twStringBuf *buf, size_t new_size);
 
 /// Adds a character to the end of a string buffer.
-/// s A UTF-8 encdoded string buffer.
-/// True if character was added succcessfully, otherwise returns false.
+///
+/// Parameters:
+/// - `s`: A UTF-8 encdoded string buffer.
+///
+/// Returns:
+/// `true` if character was added succcessfully, otherwise returns `false`.
 bool twPushUTF8(twStringBuf *buf, twChar c);
 
 /// Adds a character to the end of a string buffer.
-/// buf A UTF-16 encdoded string buffer.
-/// True if character was added succcessfully, otherwise returns false.
+///
+/// Parameters:
+/// - `buf`: A UTF-16 encdoded string buffer.
+///
+/// Returns:
+/// `true` if character was added succcessfully, otherwise returns `false`.
 bool twPushUTF16(twStringBuf *buf, twChar c);
 
 /// Appends a string to the end of a string buffer.
-/// buf A UTF-8 encoded string buffer.
-/// s A UTF-8 encoded string.
-/// True if string was added successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: A UTF-8 encoded string buffer.
+/// - `s`: A UTF-8 encoded string.
+///
+/// Returns:
+/// `true` if string was added successfully. Otherwise, returns `false`.
 bool twAppendUTF8(twStringBuf *buf, twString s);
 
 /// Appends a string to the end of a string buffer.
-/// buf A UTF-16 encoded string buffer.
-/// s A UTF-16 encoded string.
-/// True if string was added successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: A UTF-16 encoded string buffer.
+/// - `s`: A UTF-16 encoded string.
+///
+/// Returns:
+/// `true` if string was added successfully. Otherwise, returns `false`.
 bool twAppendUTF16(twStringBuf *buf, twString s);
 
 /// Appends a formatted string to the end of a string buffer.
-/// buf A UTF-8 encoded string buffer.
-/// True if string was added sucessfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: A UTF-8 encoded string buffer.
+///
+/// Returns:
+/// `true` if string was added sucessfully. Otherwise, returns `false`.
 bool twAppendFmtUTF8(twStringBuf *buf, const char *__restrict fmt, ...);
 
 /// Appends a formatted string to the end of a string buffer.
@@ -330,51 +482,79 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char *__restrict fmt, ...);
 bool twAppendFmtUTF16(twStringBuf *buf, const char *__restrict fmt, ...);
 
 /// Appends a string to the end of a string buffer and adds a newline.
-/// buf A UTF-8 encoded string buffer.
-/// s A UTF-8 encoded string.
-/// True if string was added successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: A UTF-8 encoded string buffer.
+/// - `s` A UTF-8 encoded string.
+///
+/// Returns:
+/// `true` if string was added successfully. Otherwise, returns `false`.
 bool twAppendLineUTF8(twStringBuf *buf, twString s);
 
 /// Appends a string to the end of a string buffer and adds a newline.
-/// buf A UTF-16 encoded string buffer.
-/// s A UTF-16 encoded string.
-/// True if string was added successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: A UTF-16 encoded string buffer.
+/// - `s`: A UTF-16 encoded string.
+///
+/// Returns:
+/// `true` if string was added successfully. Otherwise, returns `false`.
 bool twAppendLineUTF16(twStringBuf *buf, twString s);
 
 /// Inserts a character into the buffer at a byte index.
-/// buf The UTF-8 encoded buffer to insert the character into.
-/// idx The byte position to insert the character.
-/// c The character.
-/// True if the character was inserted successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: The UTF-8 encoded buffer to insert the character into.
+/// - `idx`: The byte position to insert the character.
+/// - `c`: The character.
+///
+/// Returns:
+/// `true` if the character was inserted successfully. Otherwise, returns `false`.
 bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c);
 
 /// Inserts a character into the buffer at a byte index.
-/// buf The UTF-16 encoded buffer to insert the character into.
-/// idx The byte position to insert the character.
-/// c The character.
-/// True if the character was inserted successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: The UTF-16 encoded buffer to insert the character into.
+/// - `idx`: The byte position to insert the character.
+/// - `c`: The character.
+///
+/// Returns:
+/// `true` if the character was inserted successfully. Otherwise, returns `false`.
 bool twInsertUTF16(twStringBuf *buf, size_t idx, twChar c);
 
 /// Inserts a string into the buffer at a byte index.
-/// buf The UTF-8 encoded buffer to insert the string into.
-/// idx The byte position to insert the string.
-/// s The UTF-8 encoded string.
-/// True if the string was inserted successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: The UTF-8 encoded buffer to insert the string into.
+/// - `idx`: The byte position to insert the string.
+/// - `s`: The UTF-8 encoded string.
+///
+/// Returns:
+/// `true` if the string was inserted successfully. Otherwise, returns `false`.
 bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s);
 
 /// Inserts a string into the buffer at a byte index.
-/// buf The UTF-16 encoded buffer to insert the string into.
-/// idx The byte position to insert the string.
-/// s The UTF-16 encoded string.
-/// True if the string was inserted successfully. Otherwise, returns false.
+///
+/// Parameters:
+/// - `buf`: The UTF-16 encoded buffer to insert the string into.
+/// - `idx`: The byte position to insert the string.
+/// - `s`: The UTF-16 encoded string.
+///
+/// Returns:
+/// `true` if the string was inserted successfully. Otherwise, returns `false`.
 bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s);
 
 /// Removes every character from a string buffer.
 void twClear(twStringBuf *buf);
 
 /// Does `buf` have a maximum capacity.
-/// buf The buffer in question.
-/// True if `buf` has a maximum capacity that cannot be exceeded.
+///
+/// Parameters:
+/// - `buf`: The buffer in question.
+///
+/// Returns:
+/// `true` if `buf` has a maximum capacity that cannot be exceeded.
 bool twHasMaxCapacity(twStringBuf buf);
 
 //
@@ -388,17 +568,23 @@ int twCodepointLengthUTF8(twChar c);
 int twCodepointLengthUTF16(twChar c);
 
 /// Number of bytes for an already encoded character.
-/// byte1 The first byte of the UTF-8 encoded character.
+///
+/// Parameters:
+/// - `byte1`: The first byte of the UTF-8 encoded character.
 int twEncodedCodepointLengthUTF8(char byte1);
 
 /// Number of bytes for an already encoded UTF-16 character.
-/// byte1 The first byte of the UTF-16 encoded character.
+///
+/// Parameters:
+/// - `byte1` The first byte of the UTF-16 encoded character.
 int twEncodedCodepointLengthUTF16(char byte1);
 
 /// Is `c` a white space character.
+///
+/// Note:
 /// Considers ASCII whitespace, and characters in the `Line_Separator`,
-///       `Paragraph_Separator`, and `Space_Separator` character cateogies a
-///        white space character.
+/// `Paragraph_Separator`, and `Space_Separator` character cateogies a
+/// white space character.
 bool twIsSpace(twChar c);
 
 //
@@ -406,51 +592,75 @@ bool twIsSpace(twChar c);
 //
 
 /// Can be used to get the next ASCII character or to iterate through
-///        many ASCII characters in a string.
-/// iter The string is marched along its charcters as this function is used.
-/// result [OUT, OPT] The next character in the string `iter`.
-/// Returns the number of bytes iterated over. If there is no more
-///         characters or an error occurred, 0 is returned.
+/// many ASCII characters in a string.
+///
+/// Parameters:
+/// - `iter`: The string is marched along its charcters as this function is used.
+/// - `result` [OUT, OPT]: The next character in the string `iter`.
+///
+/// Returns:
+/// The number of bytes iterated over. If there is no more characters or an error
+/// occurred, 0 is returned.
 int twNextASCII(twString *iter, char *result);
 
 /// Can be used to get the next UTF-8 character or to iterate through
-///        many UTF-8 characters in a string.
-/// iter The string is marched along its charcters as this function is used.
-/// result [OUT, OPT] The next character in the string `iter`.
-/// Returns the number of bytes iterated over. If there is no more
-///         characters or an error occurred, 0 is returned.
+/// many UTF-8 characters in a string.
+///
+/// Parameters:
+/// - `iter`: The string is marched along its charcters as this function is used.
+/// - `result` [OUT, OPT]: The next character in the string `iter`.
+///
+/// Returns:
+/// The number of bytes iterated over. If there is no more characters or an error
+/// occurred, 0 is returned.
 int twNextUTF8(twString *iter, twChar *result);
 
 /// Can be used to get the next UTF-16 character or to iterate through
-///        many UTF-16 characters in a string.
-/// iter The string is marched along its charcters as this function is used.
-/// result [OUT, OPT] The next character in the string `iter`.
-/// Returns the number of bytes iterated over. If there is no more
-///         characters or an error occurred, 0 is returned.
+/// many UTF-16 characters in a string.
+///
+/// Parameters:
+/// - `iter`: The string is marched along its charcters as this function is used.
+/// - `result` [OUT, OPT]: The next character in the string `iter`.
+///
+/// Returns:
+/// The number of bytes iterated over. If there is no more characters or an error
+/// occurred, 0 is returned.
 int twNextUTF16(twString *iter, twChar *result);
 
 /// Can be used to get the last ASCII character or to iterate backwards
-///        through many ASCII characters in a string.
-/// iter The string is marched backwards along its characters as this function is used.
-/// result [OUT, OPT] The next character in the sequence. The last character in `iter`.
+/// through many ASCII characters in a string.
+///
+/// Parameters:
+/// - `iter`: The string is marched backwards along its characters as this function is used.
+/// - `result` [OUT, OPT]: The next character in the sequence. The last character in `iter`.
+///
+/// Returns:
 /// The number of bytes iterated over. If there is no more character or an error occurred,
-///         0 is returned.
+/// 0 is returned.
 int twNextRevASCII(twString *iter, char *result);
 
 /// Can be used to get the last UTF-8 character or to iterate backwards through
-///        many UTF-8 characters in a string.
-/// iter The string is marched backwards along its charcters as this function is used.
-/// result [OUT, OPT] The next character in the sequence. The last character in `iter`.
-/// The number of bytes iterated over. If there is no more characters or an error occurred,
-///         0 is returned.
+/// many UTF-8 characters in a string.
+///
+/// Parameters:
+/// - `iter`: The string is marched backwards along its characters as this function is used.
+/// - `result` [OUT, OPT]: The next character in the sequence. The last character in `iter`.
+///
+/// Returns:
+/// The number of bytes iterated over. If there is no more character or an error occurred,
+/// 0 is returned.
 int twNextRevUTF8(twString *iter, twChar *result);
 
 /// Can be used to get the last UTF-16 character or to iterate backwards through
-///        many UTF-16 characters in a string.
-/// iter The string is marched backwards along its charcters as this function is used.
-/// result [OUT, OPT] The next character in the sequence. The last character in `iter`.
-/// The number of bytes iterated over. If there is no more characters or an error occurred,
-///         0 is returned.
+/// many UTF-16 characters in a string.
+///
+/// Parameters:
+/// - `iter`: The string is marched backwards along its characters as this function is used.
+/// - `result` [OUT, OPT]: The next character in the sequence. The last character in `iter`.
+///
+/// Returns:
+/// The number of bytes iterated over. If there is no more character or an error occurred,
+/// 0 is returned.
 int twNextRevUTF16(twString *iter, twChar *result);
 
 //
@@ -461,8 +671,14 @@ int twNextRevUTF16(twString *iter, twChar *result);
 #define twFmt "%.*s"
 
 /// Correctly passes `S` to a printf-like function.
-/// S Either a `twString` or a `twStringBuf`.
+///
+/// Parameters:
+/// - `S`: Either a `twString` or a `twStringBuf`.
 #define twArg(S) (int)(S).length, (S).bytes
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _TWINE_H_
 
@@ -482,6 +698,10 @@ int twNextRevUTF16(twString *iter, twChar *result);
 
 #ifndef twDealloc
 #define twDealloc(p) free(p)
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 //
@@ -1481,6 +1701,11 @@ int twNextRevUTF16(twString *iter, twChar *result) {
     return last_len;
 }
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif // _TWINE_H_IMPLEMENTATION
 
 #endif // TWINE_IMPLEMENTATION
+
