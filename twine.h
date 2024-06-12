@@ -700,6 +700,10 @@ int twNextRevUTF16(twString *iter, twChar *result);
 #define twDealloc(p) free(p)
 #endif
 
+#ifndef twRealloc
+#define twRealloc(p, nsz) realloc(p, nsz)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1271,7 +1275,7 @@ bool twExtendBuf(twStringBuf *buf, size_t new_size) {
         return true;
     }
 
-    buf->bytes = realloc(buf->bytes, new_size);
+    buf->bytes = twRealloc(buf->bytes, new_size);
     if (!buf->bytes) {
         return false;
     }

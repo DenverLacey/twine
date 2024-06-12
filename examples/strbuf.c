@@ -4,7 +4,7 @@
 #include "../twine.h"
 
 int main(void) {
-    char mem[256];    
+    char mem[256];
     twStringBuf buf = twStaticBuf(mem);
     
     twPushUTF8(&buf, 'A');
