@@ -432,6 +432,15 @@ bool twExtendBuf(twStringBuf *buf, size_t new_size);
 /// Adds a character to the end of a string buffer.
 ///
 /// Parameters:
+/// - `s`: An ASCII encdoded string buffer.
+///
+/// Returns:
+/// `true` if character was added succcessfully, otherwise returns `false`.
+bool twPushASCII(twStringBuf *buf, char c);
+
+/// Adds a character to the end of a string buffer.
+///
+/// Parameters:
 /// - `s`: A UTF-8 encdoded string buffer.
 ///
 /// Returns:
@@ -446,6 +455,16 @@ bool twPushUTF8(twStringBuf *buf, twChar c);
 /// Returns:
 /// `true` if character was added succcessfully, otherwise returns `false`.
 bool twPushUTF16(twStringBuf *buf, twChar c);
+
+/// Appends a string to the end of a string buffer.
+///
+/// Parameters:
+/// - `buf`: An ASCII encoded string buffer.
+/// - `s`: An ASCII encoded string.
+///
+/// Returns:
+/// `true` if string was added successfully. Otherwise, returns `false`.
+bool twAppendASCII(twStringBuf *buf, twString s);
 
 /// Appends a string to the end of a string buffer.
 ///
@@ -714,7 +733,9 @@ extern "C" {
 
 int twEncodeUTF8(char *bytes, int nbytes, twChar c) {
     int c_len = twCodepointLengthUTF8(c);
-    assert(c_len != 0 && c_len <= nbytes);
+    if (c_len != 0 && c_len <= nbytes) {
+        return 0;
+    }
 
     switch (c_len) {
         case 1:
@@ -741,12 +762,12 @@ int twEncodeUTF8(char *bytes, int nbytes, twChar c) {
 }
 
 int twEncodeUTF16(char *bytes, int nbytes, twChar c) {
-    int codepoint_length = twEncodedCodepointLengthUTF16(bytes[0]);
-    if (codepoint_length == 0) {
+    int c_len = twEncodedCodepointLengthUTF16(bytes[0]);
+    if (c_len != 0 && c_len <= nbytes) {
         return 0;
     }
 
-    switch (codepoint_length) {
+    switch (c_len) {
         case 2:
             bytes[0] = (c >> 8) & 0xFF;
             bytes[1] = c & 0xFF;
@@ -760,7 +781,7 @@ int twEncodeUTF16(char *bytes, int nbytes, twChar c) {
             break;
     }
 
-    return codepoint_length;
+    return c_len;
 }
 
 size_t twDecodeUTF8(const char *s, twChar *cs, size_t n) {
@@ -1284,6 +1305,15 @@ bool twExtendBuf(twStringBuf *buf, size_t new_size) {
     return true;
 }
 
+bool twPushASCII(twStringBuf *buf, char c) {
+    if (!twExtendBuf(buf, buf->length + 1)) {
+        return false;
+    }
+
+    buf->bytes[buf->length++] = c;
+    return true;
+}
+
 bool twPushUTF8(twStringBuf *buf, twChar c) {
     int c_len = twCodepointLengthUTF8(c);
     if (c_len == 0) {
@@ -1326,15 +1356,9 @@ bool twPushUTF16(twStringBuf *buf, twChar c) {
     return true;
 }
 
-bool twAppendUTF8(twStringBuf *buf, twString s) {
-    if (!twIsValidUTF8(s)) {
+bool twAppendASCII(twStringBuf *buf, twString s) {
+    if (!twExtendBuf(buf, buf->length + s.length)) {
         return false;
-    }
-
-    if (buf->length + s.length > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + s.length)) {
-            return false;
-        }
     }
 
     memcpy(buf->bytes + buf->length, s.bytes, s.length);
@@ -1342,20 +1366,18 @@ bool twAppendUTF8(twStringBuf *buf, twString s) {
     return true;
 }
 
+bool twAppendUTF8(twStringBuf *buf, twString s) {
+    if (!twIsValidUTF8(s)) {
+        return false;
+    }
+    return twAppendASCII(buf, s);
+}
+
 bool twAppendUTF16(twStringBuf *buf, twString s) {
     if (!twIsValidUTF16(s)) {
         return false;
     }
-
-    if (buf->length + s.length > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + s.length)) {
-            return false;
-        }
-    }
-
-    memcpy(buf->bytes + buf->length, s.bytes, s.length);
-    buf->length += s.length;
-    return true;
+    return twAppendASCII(buf, s);
 }
 
 bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
@@ -1365,8 +1387,8 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
     char *chars;
 
     char temp[1024];
-    int len = vsnprintf(temp, sizeof(temp), fmt, args);
-    if (len >= sizeof(temp)) {
+    ssize_t len = vsnprintf(temp, sizeof(temp), fmt, args);
+    if (len >= (ssize_t)sizeof(temp)) {
         chars = twAlloc((len + 1) * sizeof(*chars)); // Plus 1 for null terminator
         len = vsnprintf(chars, len, fmt, args);
     } else {
@@ -1386,6 +1408,8 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
 }
 
 bool twAppendFmtUTF16(twStringBuf *buf, const char * restrict fmt, ...) {
+    (void)buf;
+    (void)fmt;
     // va_list args;
     // va_start(args, fmt);
 
