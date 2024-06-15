@@ -108,6 +108,15 @@ twString twStr(const char *s);
 ///        string to find it's length.
 #define twStatic(S) TWLIT(twString){ .bytes = S, .length = sizeof(S) - 1 }
 
+/// Converts a `twString` or `twStringBuf` to a C string.
+///
+/// Parameters:
+/// - `S`: either a `twString` or a `twStringBuf`.
+///
+/// Note:
+/// Doesn't allocate or guarantee null terminator.
+#define twToC(S) ((const char *)(S).bytes)
+
 /// Duplicate the contents of a `twString`.
 ///
 /// Parameters:
@@ -142,9 +151,20 @@ bool twIsValidUTF8(twString s);
 bool twIsValidUTF16(twString s);
 
 /// Comapres two strings.
+///
 /// Returns:
 /// `true` if the strings are equal, and `false` if not.
 bool twEqual(twString a, twString b);
+
+/// Checks if `s` starts with a given `prefix`.
+///
+/// Returns:
+/// `true` if `s` begins with `prefix` and `false` if otherwise.
+///
+/// Note:
+/// It doesn't matter what encoding `s` and `prefix` are so long as they are the
+/// same.
+bool twStartsWith(twString s, twString prefix);
 
 /// Splits a string by a character. (The split character is not included.)
 ///
@@ -318,6 +338,10 @@ twChar twLastUTF16(twString s);
 /// Returns:
 /// New `twString` with first `n` bytes of `s` removed.
 twString twDrop(twString s, size_t n);
+
+/// Truncates `s` to a length of `n`. (If `s` is shorter than `n`, the
+/// empty string is returned.)
+twString twTruncate(twString s, size_t n);
 
 /// Removes all leading whitespace characters.
 ///
@@ -733,7 +757,7 @@ extern "C" {
 
 int twEncodeUTF8(char *bytes, int nbytes, twChar c) {
     int c_len = twCodepointLengthUTF8(c);
-    if (c_len != 0 && c_len <= nbytes) {
+    if (c_len == 0 || c_len > nbytes) {
         return 0;
     }
 
@@ -763,7 +787,7 @@ int twEncodeUTF8(char *bytes, int nbytes, twChar c) {
 
 int twEncodeUTF16(char *bytes, int nbytes, twChar c) {
     int c_len = twEncodedCodepointLengthUTF16(bytes[0]);
-    if (c_len != 0 && c_len <= nbytes) {
+    if (c_len == 0 || c_len > nbytes) {
         return 0;
     }
 
@@ -936,6 +960,11 @@ bool twIsValidUTF16(twString s) {
 
 bool twEqual(twString a, twString b) {
     return a.length == b.length && (memcmp(a.bytes, b.bytes, a.length) == 0);
+}
+
+bool twStartsWith(twString s, twString prefix) {
+    twString _s = twTruncate(s, prefix.length);
+    return twEqual(_s, prefix);
 }
 
 twString twSplitUTF8(twString s, twChar c, twString *remainder) {
@@ -1158,6 +1187,14 @@ twString twDrop(twString s, size_t n) {
         .bytes = s.bytes + num_dropped,
         .length = s.length - num_dropped
     };
+}
+
+twString twTruncate(twString s, size_t n) {
+    if (s.length < n) {
+        return TWLIT(twString){0};
+    }
+    s.length = n;
+    return s;
 }
 
 twString twTrimLeftUTF8(twString s) {
