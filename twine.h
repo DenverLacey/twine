@@ -1244,7 +1244,7 @@ twChar twLastUTF16(twString s) {
 }
 
 twString twDrop(twString s, size_t n) {
-    int num_dropped = s.length < n ? s.length : n;
+    size_t num_dropped = s.length < n ? s.length : n;
     return TWLIT(twString){
         .bytes = s.bytes + num_dropped,
         .length = s.length - num_dropped
@@ -1252,10 +1252,8 @@ twString twDrop(twString s, size_t n) {
 }
 
 twString twTruncate(twString s, size_t n) {
-    if (s.length < n) {
-        return TWLIT(twString){0};
-    }
-    s.length = n;
+    size_t new_length = s.length < n ? s.length : n;
+    s.length = new_length;
     return s;
 }
 
