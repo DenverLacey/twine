@@ -166,6 +166,19 @@ bool twEqual(twString a, twString b);
 /// same.
 bool twStartsWith(twString s, twString prefix);
 
+/// Checks if `s` ends with a given `suffix`.
+///
+/// Returns:
+/// `true` if `s` begins with `suffix` and `false` if otherwise.
+///
+/// Note:
+/// It doesn't matter what encoding `s` and `suffix` are so long as they are the
+/// same.
+bool twEndsWith(twString s, twString suffix);
+
+/// Checks if `s` contains `needle` as a substring.
+bool twContains(twString s, twString needle);
+
 /// Splits a string by a character. (The split character is not included.)
 ///
 /// Parameters:
@@ -588,6 +601,34 @@ bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s);
 /// `true` if the string was inserted successfully. Otherwise, returns `false`.
 bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s);
 
+/// Concatenates several UTF-8 encoded strings together using a string buffer.
+///
+/// Parameters:
+/// - `B`: A `twStringBuf`, Buffer used to concatenate the strings.
+/// - `...`: Many `twString`s, UTF-8 encoded strings to concatenate.
+///
+/// Returns:
+/// `true` if strings are successfully concatenated. Returns `false` on an error.
+///
+/// Note:
+/// Null strings denote the end of the variadic arguments.
+#define twConcatUTF8(B, ...) __twConcatUTF8_impl(B, __VA_ARGS__, TWLIT(twString){0})
+bool __twConcatUTF8_impl(twStringBuf *buf, ...);
+
+/// Concatenates several UTF-16 encoded strings together using a string buffer.
+///
+/// Parameters:
+/// - `B`: A `twStringBuf`, Buffer used to concatenate the strings.
+/// - `...`: Many `twString`s, UTF-16 encoded strings to concatenate.
+///
+/// Returns:
+/// `true` if strings are successfully concatenated. Returns `false` on an error.
+///
+/// Note:
+/// Null strings denote the end of the variadic arguments.
+#define twConcatUTF16(B, ...) __twConcatUTF8_impl(B, __VA_ARGS__, TWLIT(twString){0})
+bool __twConcatUTF16_impl(twStringBuf *buf, ...);
+
 /// Removes every character from a string buffer.
 void twClear(twStringBuf *buf);
 
@@ -965,6 +1006,27 @@ bool twEqual(twString a, twString b) {
 bool twStartsWith(twString s, twString prefix) {
     twString _s = twTruncate(s, prefix.length);
     return twEqual(_s, prefix);
+}
+
+bool twEndsWith(twString s, twString suffix) {
+    if (s.length < suffix.length) return false;
+    twString _s = twDrop(s, s.length - suffix.length);
+    return twEqual(_s, suffix);
+}
+
+bool twContains(twString s, twString needle) {
+    if (s.length < needle.length) {
+        return false;
+    }
+
+    while (s.length > 0) {
+        if (memcmp(s.bytes, needle.bytes, needle.length) == 0) {
+            return true;
+        }
+        s = twDrop(s, 1);
+    }
+
+    return false;
 }
 
 twString twSplitUTF8(twString s, twChar c, twString *remainder) {
@@ -1588,6 +1650,50 @@ bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s) {
     buf->length += s.length;
 
     return true;   
+}
+
+bool __twConcatUTF8_impl(twStringBuf *buf, ...) {
+    va_list strs;
+    va_start(strs, buf);
+
+    bool result = true;
+
+    for (;;) {
+        twString str = va_arg(strs, twString);
+        if (str.bytes == NULL) {
+            break;
+        }
+
+        if (!twAppendUTF8(buf, str)) {
+            result = false;
+            break;
+        }
+    }
+
+    va_end(strs);
+    return result;
+}
+
+bool __twConcatUTF16_impl(twStringBuf *buf, ...) {
+    va_list strs;
+    va_start(strs, buf);
+
+    bool result = true;
+
+    for (;;) {
+        twString str = va_arg(strs, twString);
+        if (str.bytes == NULL) {
+            break;
+        }
+
+        if (!twAppendUTF16(buf, str)) {
+            result = false;
+            break;
+        }
+    }
+
+    va_end(strs);
+    return result;
 }
 
 void twClear(twStringBuf *buf) {

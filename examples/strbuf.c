@@ -37,6 +37,9 @@ int main(void) {
     twString trimmed = twTrimUTF8(s);
     printf("'"twFmt"'\n", twArg(trimmed));
 
+    twConcatUTF8(&buf, twStatic("\n\nTHIS "), twStatic("IS A RESULT "), twStatic("FROM CONCAT!"));
+    printf("'"twFmt"'\n", twArg(buf));
+
     return 0;
 }
 
