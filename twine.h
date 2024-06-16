@@ -94,6 +94,9 @@ size_t twDecodeUTF8(const char *s, twChar *cs, size_t n);
 /// characters.
 size_t twDecodeUTF16(const char *s, twChar *cs, size_t n);
 
+/// Duplicates and null terminates a string.
+const char *twDupToC(twString s);
+
 //
 // `twString` functions
 //
@@ -922,6 +925,13 @@ size_t twDecodeUTF16(const char *s, twChar *cs, size_t n) {
 
 RETURN:
     return ndecoded;
+}
+
+const char *twDupToC(twString s) {
+    const char *cstr = twAlloc(s.length + 1);
+    memcpy(cstr, s.bytes, s.length);
+    cstr[s.length] = 0;
+    return cstr;
 }
 
 //
