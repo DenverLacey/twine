@@ -231,7 +231,7 @@ twString twSplitByUTF16(twString s, twSplitByPredicate pred, twString *remainder
 /// Parameters:
 /// - `s`: The UTF-8 encoded string to split.
 /// - `pred`: The predicate function used to split the string.
-/// - `remainder` [OUT, OPT] The rest of the string after the split character.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
 ///
 /// Returns:
 /// A string slice of the contents of `s` before the first instance of `c`.
@@ -247,6 +247,48 @@ twString twSplitWhileUTF8(twString s, twSplitByPredicate pred, twString *remaind
 /// Returns:
 /// A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitWhileUTF16(twString s, twSplitByPredicate pred, twString *remainder);
+
+/// Splits a string at the first occurence of any character in `cs`.
+///
+/// Parameters:
+/// - `s`: The ASCII encoded string to split.
+/// - `cs`: List of split characters.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
+/// A string slice of the contents of `s` before the split point.
+///
+/// Note:
+/// The split character is not included in the return value *and* `remainder`.
+twString twSplitAnyASCII(twString s, const char *restrict cs, twString *remainder);
+
+/// Splits a string at the first occurence of any character in `cs`.
+///
+/// Parameters:
+/// - `s`: The UTF-8 encoded string to split.
+/// - `cs`: List of split characters.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
+/// A string slice of the contents of `s` before the split point.
+///
+/// Note:
+/// The split character is not included in the return value *and* `remainder`.
+twString twSplitAnyUTF8(twString s, const char *restrict cs, twString *remainder);
+
+/// Splits a string at the first occurence of any character in `cs`.
+///
+/// Parameters:
+/// - `s`: The UTF-16 encoded string to split.
+/// - `cs`: List of split characters.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
+/// A string slice of the contents of `s` before the split point.
+///
+/// Note:
+/// The split character is not included in the return value *and* `remainder`.
+twString twSplitAnyUTF16(twString s, const char *restrict cs, twString *remainder);
 
 /// The first character of `s` as a `twString`.
 ///
@@ -928,7 +970,7 @@ RETURN:
 }
 
 const char *twDupToC(twString s) {
-    const char *cstr = twAlloc(s.length + 1);
+    char *cstr = twAlloc(s.length + 1);
     memcpy(cstr, s.bytes, s.length);
     cstr[s.length] = 0;
     return cstr;
@@ -1133,6 +1175,50 @@ twString twSplitWhileUTF16(twString s, twSplitByPredicate pred, twString *remain
 
     if (remainder) *remainder = s;
     return result;
+}
+
+twString twSplitAnyASCII(twString s, const char *restrict cs, twString *remainder) {
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    char cur;
+    while (twNextASCII(&s, &cur) > 0) {
+        if (strchr(cs, cur)) {
+            break;
+        }
+        result.length++;
+    }
+
+    if (remainder) *remainder = s;
+    return result;
+}
+
+twString twSplitAnyUTF8(twString s, const char *restrict cs, twString *remainder) {
+    (void)s;
+    (void)cs;
+    (void)remainder;
+    
+    printf("%s is not implemeneted!\n", __func__);
+    exit(-1);
+
+#if 0
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    twChar cur;
+    int curlen;
+    while ((curlen = twNextUTF8(&s, &cur)) > 0) {
+
+    }
+#endif
+}
+
+twString twSplitAnyUTF16(twString s, const char *restrict cs, twString *remainder) {
+    (void)s;
+    (void)cs;
+    (void)remainder;
+    
+    printf("%s is not implemeneted!\n", __func__);
+    printf("%s is not implemeneted!\n", __func__);
+    exit(-1);
 }
 
 twString twHeadUTF8(twString s) {
