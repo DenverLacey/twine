@@ -185,6 +185,17 @@ bool twContains(twString s, twString needle);
 /// Splits a string by a character. (The split character is not included.)
 ///
 /// Parameters:
+/// - `s`: The ASCII encoded string to split.
+/// - `c`: The charcter to search for.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
+/// A string slice of the contents of `s` before the first instance of `c`.
+twString twSplitASCII(twString s, char c, twString *remainder);
+
+/// Splits a string by a character. (The split character is not included.)
+///
+/// Parameters:
 /// - `s`: The UTF-8 encoded string to split.
 /// - `c`: The charcter to search for.
 /// - `remainder` [OUT, OPT]: The rest of the string after the split character.
@@ -207,6 +218,17 @@ twString twSplitUTF16(twString s, twChar c, twString *remainder);
 /// Splits a string by a predicate. (The split character is not included.)
 /// 
 /// Parameters:
+/// - `s`: The ASCII encoded string to split.
+/// - `pred`: The predicate function used to split the string.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
+/// A string slice of the contents of `s` before the first instance of `c`.
+twString twSplitByASCII(twString s, twSplitByPredicate pred, twString *remainder);
+
+/// Splits a string by a predicate. (The split character is not included.)
+/// 
+/// Parameters:
 /// - `s`: The UTF-8 encoded string to split.
 /// - `pred`: The predicate function used to split the string.
 /// - `remainder` [OUT, OPT]: The rest of the string after the split character.
@@ -225,6 +247,17 @@ twString twSplitByUTF8(twString s, twSplitByPredicate pred, twString *remainder)
 /// Returns:
 /// A string slice of the contents of `s` before the first instance of `c`.
 twString twSplitByUTF16(twString s, twSplitByPredicate pred, twString *remainder);
+
+/// Splits a string until `pred` returns false. (The split character is not included.)
+///
+/// Parameters:
+/// - `s`: The ASCII encoded string to split.
+/// - `pred`: The predicate function used to split the string.
+/// - `remainder` [OUT, OPT]: The rest of the string after the split character.
+///
+/// Returns:
+/// A string slice of the contents of `s` before the first instance of `c`.
+twString twSplitWhileASCII(twString s, twSplitByPredicate pred, twString *remainder);
 
 /// Splits a string until `pred` returns false. (The split character is not included.)
 ///
@@ -293,6 +326,15 @@ twString twSplitAnyUTF16(twString s, const char *restrict cs, twString *remainde
 /// The first character of `s` as a `twString`.
 ///
 /// Paramters:
+/// - `s`: A ASCII encoded string.
+///
+/// Returns:
+/// The in-place bytes of the first character.
+twString twHeadASCII(twString s);
+
+/// The first character of `s` as a `twString`.
+///
+/// Paramters:
 /// - `s`: A UTF-8 encoded string.
 ///
 /// Returns:
@@ -307,6 +349,13 @@ twString twHeadUTF8(twString s);
 /// Returns:
 /// The in-place bytes of the first character.
 twString twHeadUTF16(twString s);
+
+/// Paramters:
+/// - `s`: A ASCII encoded string.
+///
+/// Returns:
+/// The tail of `s` (All except the first character.)
+twString twTailASCII(twString s);
 
 /// Paramters:
 /// - `s`: A UTF-8 encoded string.
@@ -404,6 +453,15 @@ twString twTruncate(twString s, size_t n);
 /// Removes all leading whitespace characters.
 ///
 /// Parameters:
+/// - `s`: A ASCII encoded string.
+///
+/// Returns:
+/// A `twString` with leading whitesapce removed. (Points to original data.)
+twString twTrimLeftASCII(twString s);
+
+/// Removes all leading whitespace characters.
+///
+/// Parameters:
 /// - `s`: A UTF-8 encoded string.
 ///
 /// Returns:
@@ -422,6 +480,15 @@ twString twTrimLeftUTF16(twString s);
 /// Removes all trailing whitespace characters.
 ///
 /// Parameters:
+/// - `s`: A ASCII encoded string.
+///
+/// Returns:
+/// A `twString` with trailing whitesapce removed. (Points to original data.)
+twString twTrimRightASCII(twString s);
+
+/// Removes all trailing whitespace characters.
+///
+/// Parameters:
 /// - `s`: A UTF-8 encoded string.
 ///
 /// Returns:
@@ -436,6 +503,15 @@ twString twTrimRightUTF8(twString s);
 /// Returns:
 /// A `twString` with trailing whitesapce removed. (Points to original data.)
 twString twTrimRightUTF16(twString s);
+
+/// Removes all leading and trailing whitespace characters.
+///
+/// Parameters:
+/// - `s`: A ASCII encoded string.
+///
+/// Returns:
+/// A `twString` with leading and trailing whitesapce removed. (Points to original data.)
+twString twTrimASCII(twString s);
 
 /// Removes all leading and trailing whitespace characters.
 ///
@@ -571,6 +647,15 @@ bool twAppendUTF16(twStringBuf *buf, twString s);
 /// Appends a formatted string to the end of a string buffer.
 ///
 /// Parameters:
+/// - `buf`: A ASCII encoded string buffer.
+///
+/// Returns:
+/// `true` if string was added sucessfully. Otherwise, returns `false`.
+bool twAppendFmtASCII(twStringBuf *buf, const char *__restrict fmt, ...);
+
+/// Appends a formatted string to the end of a string buffer.
+///
+/// Parameters:
 /// - `buf`: A UTF-8 encoded string buffer.
 ///
 /// Returns:
@@ -581,6 +666,16 @@ bool twAppendFmtUTF8(twStringBuf *buf, const char *__restrict fmt, ...);
 /// buf A UTF-16 encoded string buffer.
 /// True if string was added sucessfully. Otherwise, returns false.
 bool twAppendFmtUTF16(twStringBuf *buf, const char *__restrict fmt, ...);
+
+/// Appends a string to the end of a string buffer and adds a newline.
+///
+/// Parameters:
+/// - `buf`: An ASCII encoded string buffer.
+/// - `s` An ASCII encoded string.
+///
+/// Returns:
+/// `true` if string was added successfully. Otherwise, returns `false`.
+bool twAppendLineASCII(twStringBuf *buf, twString s);
 
 /// Appends a string to the end of a string buffer and adds a newline.
 ///
@@ -605,6 +700,17 @@ bool twAppendLineUTF16(twStringBuf *buf, twString s);
 /// Inserts a character into the buffer at a byte index.
 ///
 /// Parameters:
+/// - `buf`: The ASCII encoded buffer to insert the character into.
+/// - `idx`: The byte position to insert the character.
+/// - `c`: The character.
+///
+/// Returns:
+/// `true` if the character was inserted successfully. Otherwise, returns `false`.
+bool twInsertASCII(twStringBuf *buf, size_t idx, char c);
+
+/// Inserts a character into the buffer at a byte index.
+///
+/// Parameters:
 /// - `buf`: The UTF-8 encoded buffer to insert the character into.
 /// - `idx`: The byte position to insert the character.
 /// - `c`: The character.
@@ -623,6 +729,17 @@ bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c);
 /// Returns:
 /// `true` if the character was inserted successfully. Otherwise, returns `false`.
 bool twInsertUTF16(twStringBuf *buf, size_t idx, twChar c);
+
+/// Inserts a string into the buffer at a byte index.
+///
+/// Parameters:
+/// - `buf`: The ASCII encoded buffer to insert the string into.
+/// - `idx`: The position to insert the string.
+/// - `s`: The ASCII encoded string.
+///
+/// Returns:
+/// `true` if the string was inserted successfully. Otherwise, returns `false`.
+bool twInsertStrASCII(twStringBuf *buf, size_t idx, twString s);
 
 /// Inserts a string into the buffer at a byte index.
 ///
@@ -1081,6 +1198,18 @@ bool twContains(twString s, twString needle) {
     return false;
 }
 
+twString twSplitASCII(twString s, char c, twString *remainder) {
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    char cur;
+    while (twNextASCII(&s, &cur) != 0 && cur != c) {
+        result.length++;
+    }
+
+    if (remainder) *remainder = s;
+    return result;
+}
+
 twString twSplitUTF8(twString s, twChar c, twString *remainder) {
     twString result = { .bytes = s.bytes, .length = 0 };
 
@@ -1113,6 +1242,18 @@ twString twSplitUTF16(twString s, twChar c, twString *remainder) {
     return result;
 }
 
+twString twSplitByASCII(twString s, twSplitByPredicate pred, twString *remainder) {
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    char cur;
+    while (twNextASCII(&s, &cur) > 0 && !pred(cur)) {
+        result.length++;
+    }
+
+    if (remainder) *remainder = s;
+    return result;
+}
+
 twString twSplitByUTF8(twString s, twSplitByPredicate pred, twString *remainder) {
     twString result = { .bytes = s.bytes, .length = 0 };
 
@@ -1139,6 +1280,18 @@ twString twSplitByUTF16(twString s, twSplitByPredicate pred, twString *remainder
         if (s.length <= 0) {
             break;
         }
+    }
+
+    if (remainder) *remainder = s;
+    return result;
+}
+
+twString twSplitWhileASCII(twString s, twSplitByPredicate pred, twString *remainder) {
+    twString result = { .bytes = s.bytes, .length = 0 };
+
+    twChar cur;
+    while (twNextUTF8(&s, &cur) > 0 && pred(cur)) {
+        result.length++;
     }
 
     if (remainder) *remainder = s;
@@ -1221,6 +1374,13 @@ twString twSplitAnyUTF16(twString s, const char *restrict cs, twString *remainde
     exit(-1);
 }
 
+twString twHeadASCII(twString s) {
+    if (s.length == 0) {
+        return TWLIT(twString){0};
+    }
+    return TWLIT(twString){ .bytes = s.bytes, .length = 1 };
+}
+
 twString twHeadUTF8(twString s) {
     int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
     if (c_len == 0) {
@@ -1235,6 +1395,10 @@ twString twHeadUTF16(twString s) {
         return TWLIT(twString){0};
     }
     return TWLIT(twString){ .bytes = s.bytes, .length = c_len };
+}
+
+twString twTailASCII(twString s) {
+    return twDrop(s, 1);
 }
 
 twString twTailUTF8(twString s) {
@@ -1353,6 +1517,26 @@ twString twTruncate(twString s, size_t n) {
     return s;
 }
 
+twString twTrimLeftASCII(twString s) {
+    twString iter = s;
+
+    size_t ndrop = 0;
+    for (;;) {
+        char c;
+        if (!twNextASCII(&iter, &c)) {
+            break;
+        }
+
+        if (!twIsSpace(c)) {
+            break;
+        }
+
+        ndrop++;
+    }
+
+    return twDrop(s, ndrop);
+}
+
 twString twTrimLeftUTF8(twString s) {
     twString iter = s;
 
@@ -1387,6 +1571,29 @@ twString twTrimLeftUTF16(twString s) {
     }
 
     return twDrop(s, ndrop);
+}
+
+twString twTrimRightASCII(twString s) {
+    twString iter = s;
+
+    size_t ndrop = 0;
+    for (;;) {
+        char c;
+        if (!twNextRevASCII(&iter, &c)) {
+            break;
+        }
+
+        if (!twIsSpace(c)) {
+            break;
+        }
+
+        ndrop++;
+    }
+
+    return TWLIT(twString){
+        .bytes = s.bytes,
+        .length = s.length - ndrop
+    };
 }
 
 twString twTrimRightUTF8(twString s) {
@@ -1431,6 +1638,12 @@ twString twTrimRightUTF16(twString s) {
         .bytes = s.bytes,
         .length = s.length - ndrop
     };   
+}
+
+twString twTrimASCII(twString s) {
+    s = twTrimLeftASCII(s);
+    s = twTrimRightASCII(s);
+    return s;
 }
 
 twString twTrimUTF8(twString s) {
@@ -1573,6 +1786,33 @@ bool twAppendUTF16(twStringBuf *buf, twString s) {
     return twAppendASCII(buf, s);
 }
 
+bool twAppendFmtASCII(twStringBuf *buf, const char *__restrict fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    char *chars;
+
+    char temp[1024];
+    ssize_t len = vsnprintf(temp, sizeof(temp), fmt, args);
+    if (len >= (ssize_t)sizeof(temp)) {
+        chars = twAlloc((len + 1) * sizeof(*chars)); // Plus 1 for null terminator
+        len = vsnprintf(chars, len, fmt, args);
+    } else {
+        chars = temp;
+    }
+
+    va_end(args);
+
+    twString to_add = {chars, len};
+    bool result = twAppendASCII(buf, to_add);
+
+    if (chars != temp) {
+        twDealloc(chars);
+    }
+
+    return result;
+}
+
 bool twAppendFmtUTF8(twStringBuf *buf, const char * restrict fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -1616,6 +1856,15 @@ bool twAppendFmtUTF16(twStringBuf *buf, const char * restrict fmt, ...) {
     return false;
 }
 
+bool twAppendLineASCII(twStringBuf *buf, twString s) {
+    bool ok = twAppendASCII(buf, s);
+    if (!ok) {
+        return false;
+    }
+
+    return twPushASCII(buf, '\n');
+}
+
 bool twAppendLineUTF8(twStringBuf *buf, twString s) {
     bool ok = twAppendUTF8(buf, s);
     if (!ok) {
@@ -1632,6 +1881,25 @@ bool twAppendLineUTF16(twStringBuf *buf, twString s) {
     }
 
     return twPushUTF16(buf, '\n');
+}
+
+bool twInsertASCII(twStringBuf *buf, size_t idx, char c) {
+    if (idx >= buf->length) {
+        return false;
+    }
+
+    if (!twExtendBuf(buf, buf->length + 1)) {
+        return false;
+    }
+
+    for (size_t i = buf->length; i > idx; i--) {
+        buf->bytes[i] = buf->bytes[i - 1];
+    }
+
+    buf->bytes[idx] = c;
+    buf->length++;
+
+    return true;
 }
 
 bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
@@ -1692,6 +1960,26 @@ bool twInsertUTF16(twStringBuf *buf, size_t idx, twChar c) {
     buf->length += c_len;
 
     return true;   return false;
+}
+
+bool twInsertStrASCII(twStringBuf *buf, size_t idx, twString s) {
+    if (idx >= buf->length) {
+        return false;
+    }
+
+    if (!twExtendBuf(buf, buf->length + s.length)) {
+        return false;
+    }
+
+    for (size_t i = buf->length; i > idx; i--) {
+        buf->bytes[i + s.length - 1] = buf->bytes[i - 1];
+    }
+
+    memcpy(buf->bytes + idx, s.bytes, s.length);
+
+    buf->length += s.length;
+
+    return true;
 }
 
 bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s) {
