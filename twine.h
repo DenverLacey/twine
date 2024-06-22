@@ -95,7 +95,7 @@ size_t twDecodeUTF8(const char *s, twChar *cs, size_t n);
 size_t twDecodeUTF16(const char *s, twChar *cs, size_t n);
 
 /// Duplicates and null terminates a string.
-const char *twDupToC(twString s);
+char *twDupToC(twString s);
 
 //
 // `twString` functions
@@ -153,6 +153,21 @@ bool twIsValidUTF8(twString s);
 /// Checks that `s` is a valid sequence of UTF-16.
 bool twIsValidUTF16(twString s);
 
+/// Checks if `s` is null.
+bool twIsNull(twString s);
+
+/// Checks if `s` is null or has a length of 0.
+bool twIsEmpty(twString s);
+
+/// Checks if `s` is null or is all whitespace.
+bool twIsAllSpaceASCII(twString s);
+
+/// Checks if `s` is null or is all whitespace.
+bool twIsAllSpaceUTF8(twString s);
+
+/// Checks if `s` is null or is all whitespace.
+bool twIsAllSpaceUTF16(twString s);
+
 /// Comapres two strings.
 ///
 /// Returns:
@@ -181,6 +196,66 @@ bool twEndsWith(twString s, twString suffix);
 
 /// Checks if `s` contains `needle` as a substring.
 bool twContains(twString s, twString needle);
+
+/// Index of first occurence of `c` in `s`.
+///
+/// Parameters:
+/// - `s`: An ASCII enoded string.
+/// - `c`: Character we're looking for.
+///
+/// Returns:
+/// If `c` is found, the index of its first occurence in `s`. Otherwise, returns `-1`.
+ssize_t twIndexASCII(twString s, twChar c);
+
+/// Index of first occurence of `c` in `s`.
+///
+/// Parameters:
+/// - `s`: A UTF-8 enoded string.
+/// - `c`: Character we're looking for.
+///
+/// Returns:
+/// If `c` is found, the index of its first occurence in `s`. Otherwise, returns `-1`.
+ssize_t twIndexUTF8(twString s, twChar c);
+
+/// Index of first occurence of `c` in `s`.
+///
+/// Parameters:
+/// - `s`: A UTF-16 enoded string.
+/// - `c`: Character we're looking for.
+///
+/// Returns:
+/// If `c` is found, the index of its first occurence in `s`. Otherwise, returns `-1`.
+ssize_t twIndexUTF16(twString s, twChar c);
+
+/// Byte offset of first occurence of `c` in `s`.
+///
+/// Parameters:
+/// - `s`: An ASCII enoded string.
+/// - `c`: Character we're looking for.
+///
+/// Returns:
+/// If `c` is found, the byte offset of its first occurence in `s`. Otherwise, returns `-1`.
+ssize_t twOffsetASCII(twString s, twChar c);
+
+/// Byte offset of first occurence of `c` in `s`.
+///
+/// Parameters:
+/// - `s`: A UTF-8 enoded string.
+/// - `c`: Character we're looking for.
+///
+/// Returns:
+/// If `c` is found, the byte offset of its first occurence in `s`. Otherwise, returns `-1`.
+ssize_t twOffsetUTF8(twString s, twChar c);
+
+/// Byte offset of first occurence of `c` in `s`.
+///
+/// Parameters:
+/// - `s`: A UTF-16 enoded string.
+/// - `c`: Character we're looking for.
+///
+/// Returns:
+/// If `c` is found, the byte offset of its first occurence in `s`. Otherwise, returns `-1`.
+ssize_t twOffsetUTF16(twString s, twChar c);
 
 /// Splits a string by a character. (The split character is not included.)
 ///
@@ -1086,10 +1161,15 @@ RETURN:
     return ndecoded;
 }
 
-const char *twDupToC(twString s) {
+char *twDupToC(twString s) {
     char *cstr = twAlloc(s.length + 1);
+    if (cstr == NULL) {
+        return NULL;
+    }
+
     memcpy(cstr, s.bytes, s.length);
     cstr[s.length] = 0;
+
     return cstr;
 }
 
@@ -1120,7 +1200,7 @@ twString twDup(twString s) {
 }
 
 void twFree(twString s) {
-    if (s.bytes == NULL) return;
+    if (twIsNull(s)) return;
     twDealloc((void*)s.bytes);
 }
 
@@ -1168,6 +1248,41 @@ bool twIsValidUTF16(twString s) {
     return true;
 }
 
+bool twIsNull(twString s) {
+    return s.bytes == NULL;
+}
+
+bool twIsEmpty(twString s) {
+    return (s.length == 0) || twIsNull(s);
+}
+
+bool twIsAllSpaceASCII(twString s) {
+    if (twIsEmpty(s)) {
+        return true;
+    }
+
+    twString t = twTrimLeftASCII(s);
+    return twIsEmpty(t);
+}
+
+bool twIsAllSpaceUTF8(twString s) {
+    if (twIsEmpty(s)) {
+        return true;
+    }
+
+    twString t = twTrimLeftUTF8(s);
+    return twIsEmpty(t);
+}
+
+bool twIsAllSpaceUTF16(twString s) {
+    if (twIsEmpty(s)) {
+        return true;
+    }
+
+    twString t = twTrimLeftUTF16(s);
+    return twIsEmpty(t);
+}
+
 bool twEqual(twString a, twString b) {
     return a.length == b.length && (memcmp(a.bytes, b.bytes, a.length) == 0);
 }
@@ -1188,7 +1303,7 @@ bool twContains(twString s, twString needle) {
         return false;
     }
 
-    while (s.length > 0) {
+    while (s.length >= needle.length) {
         if (memcmp(s.bytes, needle.bytes, needle.length) == 0) {
             return true;
         }
@@ -1196,6 +1311,61 @@ bool twContains(twString s, twString needle) {
     }
 
     return false;
+}
+
+ssize_t twIndexASCII(twString s, twChar c) {
+    for (ssize_t i = 0; i < s.length; i++) {
+        if (s.bytes[i] == c) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+ssize_t twIndexUTF8(twString s, twChar c) {
+    twChar si;
+    ssize_t i = 0;
+    while (twNextUTF8(&s, &si)) {
+        if (si == c) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+ssize_t twIndexUTF16(twString s, twChar c) {
+    twChar si;
+    ssize_t i = 0;
+    while (twNextUTF16(&s, &si)) {
+        if (si == c) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+ssize_t twOffsetASCII(twString s, twChar c) {
+    return twIndexASCII(s, c);
+}
+
+ssize_t twOffsetUTF8(twString s, twChar c) {
+    twString t = twSplitUTF8(s, c, NULL);
+    if (twIsNull(t)) {
+        return -1;
+    }
+
+    return (ssize_t)(t.bytes - s.bytes);
+}
+
+ssize_t twOffsetUTF16(twString s, twChar c) {
+    twString t = twSplitUTF16(s, c, NULL);
+    if (twIsNull(t)) {
+        return -1;
+    }
+
+    return (ssize_t)(t.bytes - s.bytes);
 }
 
 twString twSplitASCII(twString s, char c, twString *remainder) {
@@ -1375,7 +1545,7 @@ twString twSplitAnyUTF16(twString s, const char *restrict cs, twString *remainde
 }
 
 twString twHeadASCII(twString s) {
-    if (s.length == 0) {
+    if (twIsEmpty(s)) {
         return TWLIT(twString){0};
     }
     return TWLIT(twString){ .bytes = s.bytes, .length = 1 };
@@ -1418,7 +1588,7 @@ twString twTailUTF16(twString s) {
 }
 
 twChar twFirstASCII(twString s) {
-    if (s.length == 0) {
+    if (twIsEmpty(s)) {
         return 0;
     }
 
@@ -1426,7 +1596,7 @@ twChar twFirstASCII(twString s) {
 }
 
 twChar twFirstUTF8(twString s) {
-    if (s.length == 0) {
+    if (twIsEmpty(s)) {
         return 0;
     }
 
@@ -1440,7 +1610,7 @@ twChar twFirstUTF8(twString s) {
 }
 
 twChar twFirstUTF16(twString s) {
-    if (s.length == 0) {
+    if (twIsEmpty(s)) {
         return 0;
     }
 
@@ -1454,7 +1624,7 @@ twChar twFirstUTF16(twString s) {
 }
 
 twChar twLastASCII(twString s) {
-    if (s.length == 0) {
+    if (twIsEmpty(s)) {
         return 0;
     }
 
@@ -1462,7 +1632,7 @@ twChar twLastASCII(twString s) {
 }
 
 twChar twLastUTF8(twString s) {
-    if (s.length == 0) {
+    if (twIsEmpty(s)) {
         return 0;
     }
 
@@ -1483,7 +1653,7 @@ twChar twLastUTF8(twString s) {
 }
 
 twChar twLastUTF16(twString s) {
-    if (s.length == 0) {
+    if (twIsEmpty(s)) {
         return 0;
     }
 
@@ -1685,7 +1855,7 @@ twStringBuf twNewBufWithCapacity(size_t capacity) {
 }
 
 void twFreeBuf(twStringBuf buf) {
-    if (buf.bytes == NULL) return;
+    if (twIsNull(buf)) return;
     twDealloc(buf.bytes);
 }
 
@@ -2042,7 +2212,7 @@ bool __twConcatUTF8_impl(twStringBuf *buf, ...) {
 
     for (;;) {
         twString str = va_arg(strs, twString);
-        if (str.bytes == NULL) {
+        if (twIsNull(str)) {
             break;
         }
 
@@ -2064,7 +2234,7 @@ bool __twConcatUTF16_impl(twStringBuf *buf, ...) {
 
     for (;;) {
         twString str = va_arg(strs, twString);
-        if (str.bytes == NULL) {
+        if (twIsNull(str)) {
             break;
         }
 
