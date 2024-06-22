@@ -523,7 +523,7 @@ twString twDrop(twString s, size_t n);
 
 /// Truncates `s` to a length of `n`. (If `s` is shorter than `n`, the
 /// empty string is returned.)
-twString twTruncate(twString s, size_t n);
+twString twTrunc(twString s, size_t n);
 
 /// Removes all leading whitespace characters.
 ///
@@ -849,8 +849,22 @@ bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s);
 ///
 /// Note:
 /// Null strings denote the end of the variadic arguments.
-#define twConcatUTF8(B, ...) __twConcatUTF8_impl(B, __VA_ARGS__, TWLIT(twString){0})
-bool __twConcatUTF8_impl(twStringBuf *buf, ...);
+#define twConcatASCII(B, ...) __twConcatASCII(B, __VA_ARGS__, TWLIT(twString){(const char*)-1, (size_t)-1})
+bool __twConcatASCII(twStringBuf *buf, ...);
+
+/// Concatenates several UTF-8 encoded strings together using a string buffer.
+///
+/// Parameters:
+/// - `B`: A `twStringBuf`, Buffer used to concatenate the strings.
+/// - `...`: Many `twString`s, UTF-8 encoded strings to concatenate.
+///
+/// Returns:
+/// `true` if strings are successfully concatenated. Returns `false` on an error.
+///
+/// Note:
+/// Null strings denote the end of the variadic arguments.
+#define twConcatUTF8(B, ...) __twConcatUTF8(B, __VA_ARGS__, TWLIT(twString){(const char*)-1, (size_t)-1})
+bool __twConcatUTF8(twStringBuf *buf, ...);
 
 /// Concatenates several UTF-16 encoded strings together using a string buffer.
 ///
@@ -863,8 +877,8 @@ bool __twConcatUTF8_impl(twStringBuf *buf, ...);
 ///
 /// Note:
 /// Null strings denote the end of the variadic arguments.
-#define twConcatUTF16(B, ...) __twConcatUTF8_impl(B, __VA_ARGS__, TWLIT(twString){0})
-bool __twConcatUTF16_impl(twStringBuf *buf, ...);
+#define twConcatUTF16(B, ...) __twConcatUTF8(B, __VA_ARGS__, TWLIT(twString){(const char*)-1, (size_t)-1})
+bool __twConcatUTF16(twStringBuf *buf, ...);
 
 /// Removes every character from a string buffer.
 void twClear(twStringBuf *buf);
@@ -1288,7 +1302,7 @@ bool twEqual(twString a, twString b) {
 }
 
 bool twStartsWith(twString s, twString prefix) {
-    twString _s = twTruncate(s, prefix.length);
+    twString _s = twTrunc(s, prefix.length);
     return twEqual(_s, prefix);
 }
 
@@ -1681,7 +1695,7 @@ twString twDrop(twString s, size_t n) {
     };
 }
 
-twString twTruncate(twString s, size_t n) {
+twString twTrunc(twString s, size_t n) {
     size_t new_length = s.length < n ? s.length : n;
     s.length = new_length;
     return s;
@@ -2204,7 +2218,7 @@ bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s) {
     return true;   
 }
 
-bool __twConcatUTF8_impl(twStringBuf *buf, ...) {
+bool __twConcatASCII(twStringBuf *buf, ...) {
     va_list strs;
     va_start(strs, buf);
 
@@ -2212,7 +2226,29 @@ bool __twConcatUTF8_impl(twStringBuf *buf, ...) {
 
     for (;;) {
         twString str = va_arg(strs, twString);
-        if (twIsNull(str)) {
+        if (str.bytes == (const char*)-1 && str.length == (size_t)-1) {
+            break;
+        }
+
+        if (!twAppendASCII(buf, str)) {
+            result = false;
+            break;
+        }
+    }
+
+    va_end(strs);
+    return result;
+}
+
+bool __twConcatUTF8(twStringBuf *buf, ...) {
+    va_list strs;
+    va_start(strs, buf);
+
+    bool result = true;
+
+    for (;;) {
+        twString str = va_arg(strs, twString);
+        if (str.bytes == (const char*)-1 && str.length == (size_t)-1) {
             break;
         }
 
@@ -2226,7 +2262,7 @@ bool __twConcatUTF8_impl(twStringBuf *buf, ...) {
     return result;
 }
 
-bool __twConcatUTF16_impl(twStringBuf *buf, ...) {
+bool __twConcatUTF16(twStringBuf *buf, ...) {
     va_list strs;
     va_start(strs, buf);
 
@@ -2234,7 +2270,7 @@ bool __twConcatUTF16_impl(twStringBuf *buf, ...) {
 
     for (;;) {
         twString str = va_arg(strs, twString);
-        if (twIsNull(str)) {
+        if (str.bytes == (const char*)-1 && str.length == (size_t)-1) {
             break;
         }
 
