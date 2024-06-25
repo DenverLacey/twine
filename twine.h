@@ -195,7 +195,10 @@ bool twStartsWith(twString s, twString prefix);
 bool twEndsWith(twString s, twString suffix);
 
 /// Checks if `s` contains `needle` as a substring.
-bool twContains(twString s, twString needle);
+///
+/// Returns:
+/// Offset of `needle` into `s`. Returns `-1` if `needle` does not occur in `s`.
+ssize_t twContains(twString s, twString needle);
 
 /// Index of first occurence of `c` in `s`.
 ///
@@ -652,15 +655,31 @@ void twFreeBuf(twStringBuf buf);
 /// Creates a `twString` from a `twStringBuf`.
 twString twBufToString(twStringBuf buf);
 
-/// Extends the size of the buffer except when that would exceed `max_capacity`.
+/// Resizes the buffer except when that would exceed `max_capacity`.
 ///
 /// Parameters:
-/// - `buf`: The string buffer to extend.
+/// - `buf`: The string buffer to resize.
 /// - `new_size`: The new desired size of the buffer.
 ///
 /// Returns:
+/// `true` if buffer was resized successfully. Otherwise, returns `false`.
+///
+/// Note:
+/// If `new_size` exceeds the buffer's max capacity, `buf` remains the same size.
+bool twResizeBuf(twStringBuf *buf, size_t new_size);
+
+/// Extend the buffer except when that would exceed `max_capacity`.
+///
+/// Parameters:
+/// - `buf`: The string buffer to extend.
+/// - `extension`: How many bytes to extend `buf` by.
+///
+/// Returns:
 /// `true` if buffer was extended successfully. Otherwise, returns `false`.
-bool twExtendBuf(twStringBuf *buf, size_t new_size);
+///
+/// Note:
+/// If the new size exceeds the buffer's max capacity, `buf` remains the same size.
+bool twExtendBuf(twStringBuf *buf, size_t extension);
 
 /// Adds a character to the end of a string buffer.
 ///
@@ -1312,24 +1331,23 @@ bool twEndsWith(twString s, twString suffix) {
     return twEqual(_s, suffix);
 }
 
-bool twContains(twString s, twString needle) {
+ssize_t twContains(twString s, twString needle) {
     if (s.length < needle.length) {
-        return false;
+        return -1;
     }
 
-    while (s.length >= needle.length) {
-        if (memcmp(s.bytes, needle.bytes, needle.length) == 0) {
-            return true;
+    for (ssize_t i = 0; i < (ssize_t)s.length - (ssize_t)needle.length; i++) {
+        if (memcmp(&s.bytes[i], needle.bytes, needle.length) == 0) {
+            return i;
         }
-        s = twDrop(s, 1);
     }
 
-    return false;
+    return -1;
 }
 
 ssize_t twIndexASCII(twString s, twChar c) {
-    for (ssize_t i = 0; i < s.length; i++) {
-        if (s.bytes[i] == c) {
+    for (ssize_t i = 0; i < (ssize_t)s.length; i++) {
+        if ((twChar)s.bytes[i] == c) {
             return i;
         }
     }
@@ -1366,7 +1384,7 @@ ssize_t twOffsetASCII(twString s, twChar c) {
 
 ssize_t twOffsetUTF8(twString s, twChar c) {
     twString t = twSplitUTF8(s, c, NULL);
-    if (twIsNull(t)) {
+    if (twEqual(t, s)) {
         return -1;
     }
 
@@ -1375,7 +1393,7 @@ ssize_t twOffsetUTF8(twString s, twChar c) {
 
 ssize_t twOffsetUTF16(twString s, twChar c) {
     twString t = twSplitUTF16(s, c, NULL);
-    if (twIsNull(t)) {
+    if (twEqual(t, s)) {
         return -1;
     }
 
@@ -1869,15 +1887,18 @@ twStringBuf twNewBufWithCapacity(size_t capacity) {
 }
 
 void twFreeBuf(twStringBuf buf) {
-    if (twIsNull(buf)) return;
+    if (buf.bytes == NULL) return;
     twDealloc(buf.bytes);
 }
 
 twString twBufToString(twStringBuf buf) {
-    return *(twString*)&buf;
+    return (twString) {
+        .bytes = buf.bytes,
+        .length = buf.length
+    };
 }
 
-bool twExtendBuf(twStringBuf *buf, size_t new_size) {
+bool twResizeBuf(twStringBuf *buf, size_t new_size) {
     if (buf->max_capacity != 0 && new_size > buf->max_capacity) {
         return false;
     }
@@ -1895,8 +1916,12 @@ bool twExtendBuf(twStringBuf *buf, size_t new_size) {
     return true;
 }
 
+bool twExtendBuf(twStringBuf *buf, size_t extension) {
+    return twResizeBuf(buf, buf->length + extension);
+}
+
 bool twPushASCII(twStringBuf *buf, char c) {
-    if (!twExtendBuf(buf, buf->length + 1)) {
+    if (!twExtendBuf(buf, 1)) {
         return false;
     }
 
@@ -1910,10 +1935,8 @@ bool twPushUTF8(twStringBuf *buf, twChar c) {
         return false;
     }
 
-    if (buf->length + c_len > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + c_len)) {
-            return false;
-        }
+    if (!twExtendBuf(buf, c_len)) {
+        return false;
     }
 
     int encode_result = twEncodeUTF8(buf->bytes + buf->length, buf->capacity - buf->length, c);
@@ -1931,10 +1954,8 @@ bool twPushUTF16(twStringBuf *buf, twChar c) {
         return false;
     }
 
-    if (buf->length + c_len > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + c_len)) {
-            return false;
-        }
+    if (!twExtendBuf(buf, c_len)) {
+        return false;
     }
 
     int encode_result = twEncodeUTF16(buf->bytes + buf->length, buf->capacity - buf->length, c);
@@ -1947,7 +1968,7 @@ bool twPushUTF16(twStringBuf *buf, twChar c) {
 }
 
 bool twAppendASCII(twStringBuf *buf, twString s) {
-    if (!twExtendBuf(buf, buf->length + s.length)) {
+    if (!twExtendBuf(buf, s.length)) {
         return false;
     }
 
@@ -2072,7 +2093,7 @@ bool twInsertASCII(twStringBuf *buf, size_t idx, char c) {
         return false;
     }
 
-    if (!twExtendBuf(buf, buf->length + 1)) {
+    if (!twExtendBuf(buf, 1)) {
         return false;
     }
 
@@ -2096,10 +2117,8 @@ bool twInsertUTF8(twStringBuf *buf, size_t idx, twChar c) {
         return false;
     }
 
-    if (buf->length + c_len > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + c_len)) {
-            return false;
-        }
+    if (!twExtendBuf(buf, c_len)) {
+        return false;
     }
 
     for (size_t i = buf->length; i > idx; i--) {
@@ -2126,10 +2145,8 @@ bool twInsertUTF16(twStringBuf *buf, size_t idx, twChar c) {
         return false;
     }
 
-    if (buf->length + c_len > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + c_len)) {
-            return false;
-        }
+    if (!twExtendBuf(buf, c_len)) {
+        return false;
     }
 
     for (size_t i = buf->length; i > idx; i--) {
@@ -2151,7 +2168,7 @@ bool twInsertStrASCII(twStringBuf *buf, size_t idx, twString s) {
         return false;
     }
 
-    if (!twExtendBuf(buf, buf->length + s.length)) {
+    if (!twExtendBuf(buf, s.length)) {
         return false;
     }
 
@@ -2175,10 +2192,8 @@ bool twInsertStrUTF8(twStringBuf *buf, size_t idx, twString s) {
         return false;
     }
 
-    if (buf->length + s.length > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + s.length)) {
-            return false;
-        }
+    if (!twExtendBuf(buf, s.length)) {
+        return false;
     }
 
     for (size_t i = buf->length; i > idx; i--) {
@@ -2201,10 +2216,8 @@ bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s) {
         return false;
     }
 
-    if (buf->length + s.length > buf->capacity) {
-        if (!twExtendBuf(buf, buf->length + s.length)) {
-            return false;
-        }
+    if (!twExtendBuf(buf, s.length)) {
+        return false;
     }
 
     for (size_t i = buf->length; i > idx; i--) {
