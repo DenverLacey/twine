@@ -11,8 +11,10 @@
 
 #ifdef __cplusplus
     #define TWLIT(T) T
+    #define TWDEFAULT(T) T{}
 #else
     #define TWLIT(T) (T)
+    #define TWDEFAULT(T) (T){0}
 #endif
 
 //
@@ -865,9 +867,6 @@ bool twInsertStrUTF16(twStringBuf *buf, size_t idx, twString s);
 ///
 /// Returns:
 /// `true` if strings are successfully concatenated. Returns `false` on an error.
-///
-/// Note:
-/// Null strings denote the end of the variadic arguments.
 #define twConcatASCII(B, ...) __twConcatASCII(B, __VA_ARGS__, TWLIT(twString){(const char*)-1, (size_t)-1})
 bool __twConcatASCII(twStringBuf *buf, ...);
 
@@ -879,9 +878,6 @@ bool __twConcatASCII(twStringBuf *buf, ...);
 ///
 /// Returns:
 /// `true` if strings are successfully concatenated. Returns `false` on an error.
-///
-/// Note:
-/// Null strings denote the end of the variadic arguments.
 #define twConcatUTF8(B, ...) __twConcatUTF8(B, __VA_ARGS__, TWLIT(twString){(const char*)-1, (size_t)-1})
 bool __twConcatUTF8(twStringBuf *buf, ...);
 
@@ -894,9 +890,6 @@ bool __twConcatUTF8(twStringBuf *buf, ...);
 /// Returns:
 /// `true` if strings are successfully concatenated. Returns `false` on an error.
 ///
-/// Note:
-/// Null strings denote the end of the variadic arguments.
-#define twConcatUTF16(B, ...) __twConcatUTF8(B, __VA_ARGS__, TWLIT(twString){(const char*)-1, (size_t)-1})
 bool __twConcatUTF16(twStringBuf *buf, ...);
 
 /// Removes every character from a string buffer.
@@ -1032,6 +1025,121 @@ int twNextRevUTF16(twString *iter, twChar *result);
 
 #ifdef __cplusplus
 }
+#endif
+
+/// Define this macro to provide non-prefixed versions of definitions
+#ifdef TWINE_USING_NAMESPACE
+typedef twString String;
+typedef twStringBuf StringBuf;
+typedef twChar Char;
+typedef twSplitByPredicate SplitByPredicate;
+#define EncodeUTF8 twEncodeUTF8
+#define EncodeUTF16 twEncodeUTF16
+#define DecodeUTF8 twDecodeUTF8
+#define DecodeUTF16 twDecodeUTF16
+#define DupToC twDupToC
+#define Str twStr
+#define Static twStatic
+#define ToC twToC
+#define Dup twDup
+#define Free twFree
+#define LenUTF8 twLenUTF8
+#define LenUTF16 twLenUTF16
+#define IsValidUTF8 twIsValidUTF8
+#define IsValidUTF16 twIsValidUTF16
+#define IsNull twIsNull
+#define IsEmpty twIsEmpty
+#define IsAllSpaceASCII twIsAllSapceASCII
+#define IsAllSpaceUTF8 twIsAllSapceUTF8
+#define IsAllSpaceUTF16 twIsAllSapceUTF16
+#define Equal twEqaul
+#define StartsWith twStartsWith
+#define EndsWith twEndsWith
+#define Contains twContains
+#define IndexASCII twIndexASCII
+#define IndexUTF8 twIndexUTF8
+#define IndexUTF16 twIndexUTF16
+#define OffsetUTF8 twOffsetUTF8
+#define OffsetUTF16 twOffsetUTF16
+#define SplitASCII twSplitASCII
+#define SplitUTF8 twSplitUTF8
+#define SplitUTF16 twSplitUTF16
+#define SplitByASCII twSplitByASCII
+#define SplitByUTF8 twSplitByUTF8
+#define SplitByUTF16 twSplitByUTF16
+#define SplitWhileASCII twSplitWhileASCII
+#define SplitWhileUTF8 twSplitWhileUTF8
+#define SplitWhileUTF16 twSplitWhileUTF16
+#define SplitAnyASCII twSplitAnyASCII
+#define SplitAnyUTF8 twSplitAnyUTF8
+#define SplitAnyUTF16 twSplitAnyUTF16
+#define HeadASCII twHeadASCII
+#define HeadUTF8 twHeadUTF8
+#define HeadUTF16 twHeadUTF16
+#define TailASCII twTailASCII
+#define TailUTF8 twTailUTF8
+#define TailUTF16 twTailUTF16
+#define FirstASCII twFirstASCII
+#define FirstUTF8 twFirstUTF8
+#define FirstUTF16 twFirstUTF16
+#define LastASCII twLastASCII
+#define LastUTF8 twLastUTF8
+#define LastUTF16 twLastUTF16
+#define Drop twDrop
+#define Trunc twTrunc
+#define TrimLeftASCII twTrimLeftASCII
+#define TrimLeftUTF8 twTrimLeftUTF8
+#define TrimLeftUTF16 twTrimLeftUTF16
+#define TrimRightASCII twTrimRightASCII
+#define TrimRightUTF8 twTrimRightUTF8
+#define TrimRightUTF16 twTrimRightUTF16
+#define TrimASCII twTrimASCII
+#define TrimUTF8 twTrimUTF8
+#define TrimUTF16 twTrimUTF16
+#define StaticBuf twStaticBuf
+#define NewBuf twNewBuf
+#define NewBufWithMaxCapacity twNewBufWithMaxCapacity
+#define NewBufWithCapacity twNewBufWithCapacity
+#define FreeBuf twFreeBuf
+#define BufToString twBufToString
+#define ResizeBuf twResizeBuf
+#define ExtendBuf twExtendBuf
+#define PushASCII twPushASCII
+#define PushUTF8 twPushUTF8
+#define PushUTF16 twPushUTF16
+#define AppendASCII twAppendASCII
+#define AppendUTF8 twAppendUTF8
+#define AppendUTF16 twAppendUTF16
+#define AppendFmtASCII twAppendFmtASCII
+#define AppendFmtUTF8 twAppendFmtUTF8
+#define AppendFmtUTF16 twAppendFmtUTF16
+#define AppendLineASCII twAppendLineASCII
+#define AppendLineUTF8 twAppendLineUTF8
+#define AppendLineUTF16 twAppendLineUTF16
+#define InsertASCII twInsertASCII
+#define InsertUTF8 twInsertUTF8
+#define InsertUTF16 twInsertUTF16
+#define InsertStrASCII twInsertStrASCII
+#define InsertStrUTF8 twInsertStrUTF8
+#define InsertStrUTF16 twInsertStrUTF16
+#define ConcatASCII twConcatASCII
+#define ConcatUTF8 twConcatUTF8
+#define ConcatUTF16 twConcatUTF16
+#define Clear twClear
+#define HasMaxCapacity twHasMaxCapacity
+#define CodepointLengthUTF8 twCodepointLengthUTF8
+#define CodepointLengthUTF16 twCodepointLengthUTF16
+#define EncodedCodepointLengthUTF8 twEncodedCodepointLengthUTF8
+#define EncodedCodepointLengthUTF16 twEncodedCodepointLengthUTF16
+#define IsSpace twIsSpace
+#define NextASCII twNextASCII
+#define NextUTF8 twNextUTF8
+#define NextUTF16 twNextUTF16
+#define NextRevASCII twNextRevASCII
+#define NextRevUTF8 twNextRevUTF8
+#define NextRevUTF16 twNextRevUTF16
+#define Fmt twFmt
+#define Arg twArg
 #endif
 
 #endif // _TWINE_H_
@@ -1214,14 +1322,14 @@ twString twStr(const char *s) {
     if (s) {
         return TWLIT(twString){ .bytes = s, .length = strlen(s) };
     } else {
-        return TWLIT(twString){0};
+        return TWDEFAULT(twString);
     }
 }
 
 twString twDup(twString s) {
     char *new_bytes = twAlloc(s.length);
     if (new_bytes == NULL) {
-        return TWLIT(twString){0};
+        return TWDEFAULT(twString);
     }
     
     memcpy(new_bytes, s.bytes, s.length);
@@ -1547,6 +1655,7 @@ twString twSplitAnyASCII(twString s, const char *restrict cs, twString *remainde
     return result;
 }
 
+// TODO: Implement twSplitAnyUTF8()
 twString twSplitAnyUTF8(twString s, const char *restrict cs, twString *remainder) {
     (void)s;
     (void)cs;
@@ -1566,6 +1675,7 @@ twString twSplitAnyUTF8(twString s, const char *restrict cs, twString *remainder
 #endif
 }
 
+// TODO: Implement twSplitAnyUTF16()
 twString twSplitAnyUTF16(twString s, const char *restrict cs, twString *remainder) {
     (void)s;
     (void)cs;
@@ -1578,7 +1688,7 @@ twString twSplitAnyUTF16(twString s, const char *restrict cs, twString *remainde
 
 twString twHeadASCII(twString s) {
     if (twIsEmpty(s)) {
-        return TWLIT(twString){0};
+        return TWDEFAULT(twString);
     }
     return TWLIT(twString){ .bytes = s.bytes, .length = 1 };
 }
@@ -1586,7 +1696,7 @@ twString twHeadASCII(twString s) {
 twString twHeadUTF8(twString s) {
     int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
     if (c_len == 0) {
-        return TWLIT(twString){0};
+        return TWDEFAULT(twString);
     }
     return TWLIT(twString){ .bytes = s.bytes, .length = c_len };
 }
@@ -1594,7 +1704,7 @@ twString twHeadUTF8(twString s) {
 twString twHeadUTF16(twString s) {
     int c_len = twEncodedCodepointLengthUTF16(s.bytes[0]);
     if (c_len == 0) {
-        return TWLIT(twString){0};
+        return TWDEFAULT(twString);
     }
     return TWLIT(twString){ .bytes = s.bytes, .length = c_len };
 }
@@ -1606,7 +1716,7 @@ twString twTailASCII(twString s) {
 twString twTailUTF8(twString s) {
     int c_len = twEncodedCodepointLengthUTF8(s.bytes[0]);
     if (c_len == 0) {
-        return TWLIT(twString){0};
+        return TWDEFAULT(twString);
     }
     return twDrop(s, c_len);
 }
@@ -1614,7 +1724,7 @@ twString twTailUTF8(twString s) {
 twString twTailUTF16(twString s) {
     int c_len = twEncodedCodepointLengthUTF16(s.bytes[0]);
     if (c_len == 0) {
-        return TWLIT(twString){0};
+        return TWDEFAULT(twString);
     }
     return twDrop(s, c_len);
 }
@@ -1865,7 +1975,7 @@ twString twTrimUTF16(twString s) {
 //
 
 twStringBuf twNewBuf(void) {
-    return TWLIT(twStringBuf){0};
+    return TWDEFAULT(twStringBuf);
 }
 
 twStringBuf twNewBufWithMaxCapacity(size_t max_capacity) {
@@ -1877,7 +1987,7 @@ twStringBuf twNewBufWithMaxCapacity(size_t max_capacity) {
 twStringBuf twNewBufWithCapacity(size_t capacity) {
     char *bytes = twAlloc(capacity);
     if (bytes == NULL) {
-        return TWLIT(twStringBuf){0};
+        return TWDEFAULT(twStringBuf);
     }
 
     return TWLIT(twStringBuf){
@@ -1907,11 +2017,12 @@ bool twResizeBuf(twStringBuf *buf, size_t new_size) {
         return true;
     }
 
-    buf->bytes = twRealloc(buf->bytes, new_size);
-    if (!buf->bytes) {
+    char *new_bytes = twRealloc(buf->bytes, new_size);
+    if (!new_bytes) {
         return false;
     }
 
+    buf->bytes = new_bytes;
     buf->capacity = new_size;
     return true;
 }

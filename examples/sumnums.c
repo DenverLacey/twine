@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 
 #define TWINE_IMPLEMENTATION
 #include "../twine.h"
